@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 import yaml
 from pydantic import BaseModel, Field
@@ -95,10 +96,39 @@ class SinksConfig(BaseModel):
 
 class DatabaseConfig(BaseModel):
     url_env: str = "NAESB_DATABASE_URL"
+    # Optional: some deployments keep the username/password out of the base
+    # URL (e.g. a secrets manager rotates them independently of the
+    # host/port/dbname). If set, these override whatever credentials (if any)
+    # are embedded in the url_env value.
+    username_env: str | None = None
+    password_env: str | None = None
 
     @property
     def url(self) -> str:
-        return resolve_env(self.url_env)
+        base_url = resolve_env(self.url_env)
+        if self.username_env is None and self.password_env is None:
+            return base_url
+        username = resolve_env(self.username_env) if self.username_env else None
+        password = resolve_env(self.password_env) if self.password_env else None
+        return _with_credentials(base_url, username, password)
+
+
+def _with_credentials(url: str, username: str | None, password: str | None) -> str:
+    parts = urlsplit(url)
+    user = username if username is not None else parts.username
+    pwd = password if password is not None else parts.password
+
+    if user and pwd:
+        userinfo = f"{user}:{pwd}@"
+    elif user:
+        userinfo = f"{user}@"
+    else:
+        userinfo = ""
+
+    host = parts.hostname or ""
+    port = f":{parts.port}" if parts.port else ""
+    netloc = f"{userinfo}{host}{port}"
+    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
 
 
 class OutboundConfig(BaseModel):

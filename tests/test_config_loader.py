@@ -91,6 +91,47 @@ def test_resolve_env_present_returns_value(tmp_path, monkeypatch):
     assert settings.crypto.passphrase == "secret123"
 
 
+def test_database_url_unchanged_when_no_separate_credentials(tmp_path, monkeypatch):
+    monkeypatch.setenv("TEST_DATABASE_URL", "postgresql://embeddeduser:embeddedpass@dbhost:5432/naesb")
+    path = _write_yaml(tmp_path / "config.yaml", VALID_CONFIG)
+    settings = load_settings(path)
+    assert settings.database.url == "postgresql://embeddeduser:embeddedpass@dbhost:5432/naesb"
+
+
+def test_database_url_injects_separate_username_and_password(tmp_path, monkeypatch):
+    monkeypatch.setenv("TEST_DATABASE_URL", "postgresql://dbhost:5432/naesb")
+    monkeypatch.setenv("TEST_DB_USERNAME", "naesb")
+    monkeypatch.setenv("TEST_DB_PASSWORD", "s3cr3t")
+    config = {
+        **VALID_CONFIG,
+        "database": {
+            "url_env": "TEST_DATABASE_URL",
+            "username_env": "TEST_DB_USERNAME",
+            "password_env": "TEST_DB_PASSWORD",
+        },
+    }
+    path = _write_yaml(tmp_path / "config.yaml", config)
+    settings = load_settings(path)
+    assert settings.database.url == "postgresql://naesb:s3cr3t@dbhost:5432/naesb"
+
+
+def test_database_url_separate_credentials_override_embedded_ones(tmp_path, monkeypatch):
+    monkeypatch.setenv("TEST_DATABASE_URL", "postgresql://olduser:oldpass@dbhost:5432/naesb")
+    monkeypatch.setenv("TEST_DB_USERNAME", "newuser")
+    monkeypatch.setenv("TEST_DB_PASSWORD", "newpass")
+    config = {
+        **VALID_CONFIG,
+        "database": {
+            "url_env": "TEST_DATABASE_URL",
+            "username_env": "TEST_DB_USERNAME",
+            "password_env": "TEST_DB_PASSWORD",
+        },
+    }
+    path = _write_yaml(tmp_path / "config.yaml", config)
+    settings = load_settings(path)
+    assert settings.database.url == "postgresql://newuser:newpass@dbhost:5432/naesb"
+
+
 def test_load_partners_valid(tmp_path):
     path = _write_yaml(tmp_path / "partners.yaml", VALID_PARTNERS)
     registry = load_partners(path)

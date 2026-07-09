@@ -52,6 +52,12 @@ sinks:
 
 database:
   url_env: NAESB_DATABASE_URL
+  # Optional: only needed if you want the username/password kept separate
+  # from the base connection string (e.g. rotated independently via a
+  # secrets manager). If set, these override any credentials embedded in
+  # the url_env value above.
+  # username_env: NAESB_DATABASE_USERNAME
+  # password_env: NAESB_DATABASE_PASSWORD
 
 outbound:
   timeout_seconds: 30

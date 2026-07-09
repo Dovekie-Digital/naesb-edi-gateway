@@ -29,6 +29,7 @@ This replaces an AS2-based gateway (AS2 is not what NAESB 4.0 uses) with a purpo
    ```
    cp config/config.example.yaml config/config.yaml
    cp config/partners.example.yaml config/partners.yaml
+   cp config/.env.example config/.env
    ```
 2. Generate your own OpenPGP keypair (RSA, 4096-bit recommended, 2048-bit minimum):
    ```
@@ -37,7 +38,7 @@ This replaces an AS2-based gateway (AS2 is not what NAESB 4.0 uses) with a purpo
    gpg --homedir <gnupg_home> --armor --export <your-key-id> > public_key.asc
    ```
    Point `crypto.private_key_path` at `private_key.asc` and set the `crypto.passphrase_env` environment variable. Send `public_key.asc` to each trading partner; import each partner's public key file and reference its path from `partners.yaml`.
-3. Set the environment variables referenced by `config.yaml`/`partners.yaml` (`*_env` fields): GPG passphrase, database URL, S3 credentials, per-partner auth secrets.
+3. Fill in `config/.env` with real values for every `*_env` field referenced in `config.yaml`/`partners.yaml` (GPG passphrase, database URL, S3 credentials, per-partner auth secrets) -- add one `password_env`/`key_env` pair per partner as you add partners. `config/.env` is gitignored and is loaded automatically by `docker-compose.yml`; outside Docker, `source`/export it yourself (or use `python-dotenv`/your process manager) before starting the app.
 4. Provision a Postgres database; migrations in `db/migrations/` are applied automatically on startup.
 
 ## Running locally
@@ -52,6 +53,7 @@ Without Docker:
 ```
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
+set -a && source config/.env && set +a
 export NAESB_CONFIG_PATH=config/config.yaml
 uvicorn app.main:app --reload
 ```

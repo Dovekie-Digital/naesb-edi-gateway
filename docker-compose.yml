@@ -2,10 +2,13 @@ services:
   app:
     build: .
     ports: ["8000:8000"]
+    env_file:
+      - config/.env
     environment:
       NAESB_CONFIG_PATH: /app/config/config.yaml
+      # overrides config/.env's NAESB_DATABASE_URL -- compose network uses the
+      # service name "postgres" as the hostname, not localhost.
       NAESB_DATABASE_URL: postgresql://naesb:naesb@postgres:5432/naesb
-      NAESB_GPG_PASSPHRASE: ${NAESB_GPG_PASSPHRASE:-devpassphrase}
     volumes:
       - ./config:/app/config:ro
       - gnupg_data:/data/gnupg
