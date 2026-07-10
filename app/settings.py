@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Literal
 from urllib.parse import urlsplit, urlunsplit
 
 import yaml
@@ -155,8 +156,15 @@ class OutboundConfig(BaseModel):
 
 
 class LoggingConfig(BaseModel):
-    level: str = "INFO"
-    format: str = "json"
+    level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    format: Literal["json", "console"] = "json"
+    # Logs the full raw inbound HTTP request (method, path, headers with
+    # Authorization redacted, and the complete body) for every call to
+    # {server.inbound_path}, before any auth/parsing/decryption -- so a
+    # partner's request can be inspected even if it fails before we can make
+    # sense of it. Logged at INFO, so it's still subject to `level` above
+    # (e.g. level: WARNING suppresses it regardless of this flag).
+    capture_raw_requests: bool = True
 
 
 class Settings(BaseModel):

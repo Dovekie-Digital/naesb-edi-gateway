@@ -1,4 +1,6 @@
+import base64
 import hashlib
+from collections.abc import Mapping
 from datetime import UTC, datetime
 
 import structlog
@@ -49,6 +51,21 @@ async def receive(
     body = await request.body()
     if len(body) > settings.server.max_body_size_bytes:
         raise HTTPException(status_code=413, detail="payload too large")
+
+    # Capture the complete raw request -- before auth/parsing/decryption --
+    # so a partner's transmission can be inspected even if it fails before we
+    # can make sense of it. The Authorization header is redacted since it
+    # carries the partner's cleartext inbound credential.
+    if settings.logging.capture_raw_requests:
+        logger.info(
+            "inbound_raw_request",
+            method=request.method,
+            path=request.url.path,
+            query_params=dict(request.query_params),
+            headers=_redact_headers(request.headers),
+            body_base64=base64.b64encode(body).decode("ascii"),
+            body_length=len(body),
+        )
 
     # Step 1: transport-level auth, before any GPG work. Fails closed with a
     # plain (unsigned) HTTP error -- this is not a protocol-level NACK.
@@ -156,6 +173,13 @@ async def receive(
     await tracker.update_status(message_id, status="accepted", receipt_verified=True)
     logger.info("inbound_accepted", partner=partner.name, digest=content_digest)
     return _signed_receipt(gpg, fingerprints, settings, Receipt.accepted())
+
+
+def _redact_headers(headers: Mapping[str, str]) -> dict[str, str]:
+    return {
+        name: ("[REDACTED]" if name.lower() == "authorization" else value)
+        for name, value in headers.items()
+    }
 
 
 def _signed_receipt(

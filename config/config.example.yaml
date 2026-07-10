@@ -71,7 +71,14 @@ outbound:
   retry_backoff_seconds: 5
 
 logging:
-  level: INFO
-  format: json
+  level: INFO   # DEBUG | INFO | WARNING | ERROR | CRITICAL
+  format: json  # json | console
+  # Logs the complete raw inbound HTTP request (method, path, headers with
+  # Authorization redacted, and the full body) for every call to the inbound
+  # endpoint, before any auth/parsing/decryption -- so a partner's request
+  # can be inspected even if it fails before we can make sense of it.
+  # Logged at INFO, so `level` above still applies (e.g. level: WARNING
+  # suppresses this regardless of the flag).
+  capture_raw_requests: true
 
 partners_file: /app/config/partners.yaml

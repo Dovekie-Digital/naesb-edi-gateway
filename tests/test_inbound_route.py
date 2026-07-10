@@ -1,9 +1,11 @@
+import base64
 import uuid
 from dataclasses import dataclass, field
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from structlog.testing import capture_logs
 
 from app.crypto.gpg_wrapper import GpgService
 from app.dependencies import (
@@ -313,3 +315,46 @@ def test_missing_header_rejected_as_invalid_header_parameters(settings, partners
     receipt = _decode_receipt(gpg_service, us_key, response.content)
     assert receipt.status.value == "validation-failed"
     assert receipt.error_code.value == 103
+
+
+def test_raw_request_logged_with_authorization_redacted(settings, partners, gpg_service, fingerprints, tracker, recording_sink, us_key, partner_key):
+    client = build_client(settings, partners, gpg_service, fingerprints, tracker, [recording_sink])
+    body = _encrypt(gpg_service, us_key, partner_key, "partner-passphrase")
+
+    with capture_logs() as logs:
+        client.post("/inbound", headers=_valid_headers(), content=body)
+
+    raw_events = [e for e in logs if e["event"] == "inbound_raw_request"]
+    assert len(raw_events) == 1
+    event = raw_events[0]
+    assert event["method"] == "POST"
+    assert event["headers"]["authorization"] == "[REDACTED]"
+    assert event["headers"]["transaction-set"] == "873"
+    assert base64.b64decode(event["body_base64"]) == body
+    assert event["body_length"] == len(body)
+
+
+def test_raw_request_logged_even_when_auth_fails(settings, partners, gpg_service, fingerprints, tracker, recording_sink, us_key, partner_key):
+    client = build_client(settings, partners, gpg_service, fingerprints, tracker, [recording_sink])
+    body = _encrypt(gpg_service, us_key, partner_key, "partner-passphrase")
+    headers = _valid_headers()
+    del headers["authorization"]
+
+    with capture_logs() as logs:
+        response = client.post("/inbound", headers=headers, content=body)
+
+    assert response.status_code == 401
+    assert any(e["event"] == "inbound_raw_request" for e in logs)
+
+
+def test_raw_request_capture_disabled_via_config(settings, partners, gpg_service, fingerprints, tracker, recording_sink, us_key, partner_key):
+    settings_disabled = settings.model_copy(
+        update={"logging": settings.logging.model_copy(update={"capture_raw_requests": False})}
+    )
+    client = build_client(settings_disabled, partners, gpg_service, fingerprints, tracker, [recording_sink])
+    body = _encrypt(gpg_service, us_key, partner_key, "partner-passphrase")
+
+    with capture_logs() as logs:
+        client.post("/inbound", headers=_valid_headers(), content=body)
+
+    assert not any(e["event"] == "inbound_raw_request" for e in logs)
