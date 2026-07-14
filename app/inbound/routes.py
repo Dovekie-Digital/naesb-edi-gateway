@@ -166,12 +166,25 @@ async def receive(
         return reject(NaesbErrorCode.SIGNATURE_NOT_MATCHED)
 
     # Step 6: enforce this gateway's local cryptographic policy (NAESB
-    # itself only mandates a minimum RSA key length -- see policy.py).
+    # itself only mandates a minimum RSA key length -- see policy.py). A
+    # partner's crypto_overrides (partners.yaml), when set, replaces the
+    # global default allow-list entirely for that partner.
+    overrides = partner.crypto_overrides
+    allowed_ciphers = (
+        overrides.allowed_ciphers
+        if overrides and overrides.allowed_ciphers
+        else settings.crypto.allowed_ciphers
+    )
+    allowed_digests = (
+        overrides.allowed_digests
+        if overrides and overrides.allowed_digests
+        else settings.crypto.allowed_digests
+    )
     try:
         enforce_policy(
             decrypt_result.algo_info,
-            allowed_ciphers={settings.crypto.cipher_algo},
-            allowed_digests={settings.crypto.digest_algo},
+            allowed_ciphers=set(allowed_ciphers),
+            allowed_digests=set(allowed_digests),
         )
     except WeakAlgorithmError as exc:
         await tracker.update_status(

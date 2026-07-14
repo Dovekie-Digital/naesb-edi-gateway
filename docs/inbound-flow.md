@@ -140,11 +140,18 @@ detected duplicate.
    signature) in one check.
 4. **`app/crypto/policy.py::enforce_policy()`** inspects the actual
    negotiated cipher/digest algorithm IDs (parsed from GnuPG's status-fd
-   `DECRYPTION_INFO`/`VALIDSIG` lines) against our configured allow-list
-   (`AES256`/`SHA256` by default). A violation is `GWX-WEAK-ALGO` — this is
-   *our own local security policy*, not a NAESB mandate (the spec only
-   requires RSA ≥ 2048-bit keys, standard 12.3.26 explicitly disclaims
-   setting site-level algorithm standards beyond that).
+   `DECRYPTION_INFO`/`VALIDSIG` lines) against an allow-list: the
+   authenticated partner's `crypto_overrides.allowed_ciphers`/
+   `allowed_digests` (`partners.yaml`) if set, else the global
+   `settings.crypto.allowed_ciphers`/`allowed_digests` default (`[AES256,
+   AES192, AES128]` / `[SHA256, SHA384, SHA512, SHA1]` — broadened past our
+   own outbound `cipher_algo`/`digest_algo` default because real partners'
+   PGP libraries are often older; confirmed against real captures,
+   `samples/request-ssc-*.txt`, whose sender requests `sha1` receipt
+   signatures). A violation is `GWX-WEAK-ALGO` — this is *our own local
+   security policy*, not a NAESB mandate (the spec only requires RSA ≥
+   2048-bit keys, standard 12.3.26 explicitly disclaims setting site-level
+   algorithm standards beyond that).
 
 ## 6. Deliver the plaintext (sink fan-out)
 

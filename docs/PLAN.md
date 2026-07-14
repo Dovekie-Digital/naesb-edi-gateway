@@ -61,6 +61,9 @@ naesb-edi/
 │       ├── 0001_init.sql          # messages + schema_migrations tables
 │       ├── 0002_naesb_receipt_fields.sql  # trans_id/refnum/refnum_orig, error_code -> text
 │       └── 0003_outbound_jobs.sql # DB-backed outbound retry job queue
+├── samples/
+│   └── request-ssc-{1,2,3,4}.txt  # real captured trading-partner inbound transmissions
+│                                   # -- fixtures for test_sample_request.py
 ├── app/
 │   ├── main.py                    # FastAPI app factory + lifespan startup (config, gpg, db, sinks)
 │   ├── worker.py                  # separate process: polls outbound_jobs, executes/reschedules attempts
@@ -115,7 +118,8 @@ naesb-edi/
     ├── test_sinks_dispatcher.py
     ├── test_tracking_repository.py     # testcontainers[postgres], marked @pytest.mark.integration
     ├── test_api_partners.py
-    └── test_config_loader.py
+    ├── test_config_loader.py
+    └── test_sample_request.py          # parses real captured samples/request-ssc-*.txt transmissions
 ```
 
 ## Key design decisions
@@ -127,6 +131,7 @@ naesb-edi/
 | MIME byte-exactness | All MIME construction (outer envelope, inner `multipart/encrypted`, the receipt's `multipart/signed`/`multipart/report`) is hand-rolled with explicit boundary strings and a manual splitter (`mime_split.py`) rather than Python's `email.generator`, which is not guaranteed to reproduce byte-identical output on re-serialization -- and PGP signatures are byte-exact. | Verified in `test_receipt.py::test_full_signed_receipt_round_trip_with_real_gpg`: sign, wrap, parse, and verify against real GnuPG without ever re-serializing the signed bytes. |
 | Payload crypto pipeline | Compress (ZIP/ZLIB) -> sign with sender's private key -> encrypt to recipient's public key -> armor-less binary, via a single `python-gnupg` `encrypt()` call with `sign=` set. | Matches "Encryption / Digital Signature". Cipher/digest choice (AES256/SHA256 default) is this gateway's own local policy, not a NAESB mandate (12.3.26). |
 | Key strength | RSA only; reject/refuse to load any key (ours or a partner's) under 2048 bits at startup; 4096-bit recommended. | A real NAESB requirement (Appendix A), enforced in `keyring.py` via `gpg.list_keys()`. |
+| Inbound decrypt-policy accept-list | `crypto.allowed_ciphers`/`crypto.allowed_digests` (lists, default `[AES256, AES192, AES128]`/`[SHA256, SHA384, SHA512, SHA1]`) -- separate from `cipher_algo`/`digest_algo` above, which are only what *we* use outbound. Checked in `enforce_policy()` (inbound decrypt) and `enforce_digest_policy()` (verifying a partner's returned receipt signature, `outbound/client.py`). Per-partner `crypto_overrides.allowed_ciphers`/`allowed_digests` (`partners.yaml`, `app/partners.py::CryptoOverrides`) replaces the global list for that partner only. | Broadened past our own outbound default because real partners' PGP libraries are often older than what we'd choose ourselves -- confirmed against real captures (`samples/request-ssc-*.txt`), whose sender requests `sha1` receipt signatures. NAESB itself sets no cipher/digest mandate (12.3.26), so this remains a local policy knob, not a spec requirement. |
 | TLS | Outbound `httpx` client pinned to TLS 1.2 minimum; inbound TLS termination stays at a reverse proxy. | Matches standards 12.3.14/12.3.23/Appendix A. |
 | Receipt | `Content-Type: multipart/signed` (detached PGP signature, `application/pgp-signature`) wrapping `multipart/report; report-type="gisb-acknowledgement-receipt"`, whose sub-parts contain `key=value*`-delimited lines (`time-c`, `request-status`, `server-id`, `trans-id`) in that required order. `time-c` is `yyyymmddhhmmss`, captured immediately on last byte received (standard 12.3.5), before auth/parsing/decryption. `trans-id` is a DB-sequence-backed monotonic integer. | Matches "Receiving Internet ET Packages" / "Acknowledgement Receipt" exactly -- supersedes the earlier fabricated line-delimited JSON-like design. |
 | Error codes | Real `EEDM###`/`WEDM###` codes (`error_codes.py::NaesbErrorCode`) for spec-documented failure modes (missing/invalid fields, decryption failures 601-604/699, unknown partner 701, duplicate refnum 121, ...). Gateway-only extensions (`GatewayExtensionCode`, `GWX-...` prefix) for guarantees the spec doesn't cover (content-digest dedup, local weak-algorithm policy, sink delivery failure) -- explicitly namespaced so they can never collide with a real code. | The spec's own Table 1 is authoritative and far more specific than the earlier fabricated 3-code scheme; extensions are clearly marked as non-NAESB. |
@@ -307,6 +312,26 @@ startup if our key or any partner key reports `algo` outside RSA or
 requirement, Appendix A), logging a warning if below
 `recommended_rsa_key_bits` (4096).
 
+**Inbound decrypt-policy accept-list vs. our own outbound crypto default:**
+`crypto.cipher_algo`/`crypto.digest_algo` (singular) are what *this gateway*
+uses when *it* encrypts/signs (outbound payloads, receipt detached-sign).
+Separately, `crypto.allowed_ciphers`/`crypto.allowed_digests` (lists,
+default `[AES256, AES192, AES128]` / `[SHA256, SHA384, SHA512, SHA1]`) are
+the accept-list `app/crypto/policy.py::enforce_policy()` checks a decrypted
+*inbound* message's negotiated algorithms against (`app/inbound/routes.py`),
+and what `app/outbound/client.py` checks a partner's *returned receipt*
+signature digest against. This is deliberately broader than our own
+outbound default: NAESB doesn't mandate a specific cipher/digest (standard
+12.3.26), and real trading partners' PGP libraries are often older --
+confirmed against real captures (`samples/request-ssc-*.txt`, from an older
+trading-partner PGP implementation), whose `receipt-security-selection`
+field requests `sha1`. A partner whose real
+traffic needs something outside even this broadened default (e.g. 3DES) can
+get a `crypto_overrides.allowed_ciphers`/`allowed_digests` entry in
+`partners.yaml` (`app/partners.py::CryptoOverrides`) that replaces the
+global list for that partner only, rather than widening the default for
+everyone.
+
 ## Database
 
 `db/migrations/0001_init.sql` creates `schema_migrations` and `messages`.
@@ -338,7 +363,15 @@ migration files in filename order at startup (both app and worker).
   digest/refnum (`GWX-DUPLICATE-DIGEST`/`EEDM121`), missing refnum
   (`EEDM119`), weak algorithm (`GWX-WEAK-ALGO`), sink failure
   (`GWX-SINK-FAILURE`), missing field (exact `EEDM1xx`), sequential
-  `trans-id`, happy path.
+  `trans-id`, happy path, and a synthetic test reproducing a real partner's
+  structural shape (SHA1 digest, armored ciphertext, dash-containing inner
+  boundary, no CTE header, `input-data` last) end to end.
+- `test_sample_request.py`: parses the real captured
+  `samples/request-ssc-{1,2,3,4}.txt` trading-partner transmissions through
+  `parse_multipart_form()`/`unwrap_pgp_encrypted()` directly -- confirms the
+  envelope fields and exact armored ciphertext bytes are recovered
+  untouched from real-world traffic, not just this gateway's own synthetic
+  `build_multipart_body()` output.
 - `test_outbound_client.py`: `respx`-mocked partner endpoint, asserts
   request shape (multipart body, ordered fields, ciphertext-not-plaintext)
   and receipt-signature verification logic for `send_once()`.

@@ -41,6 +41,18 @@ class EnvelopeOverrides(BaseModel):
     use_refnum: bool = False
 
 
+class CryptoOverrides(BaseModel):
+    """Per-partner deviations from the global crypto.allowed_ciphers/
+    allowed_digests accept-list (app/settings.py::CryptoConfig). Only set
+    these for a partner whose real-world payloads/receipts genuinely need an
+    algorithm outside the global default (e.g. a partner still on 3DES) --
+    this widens acceptance for that one partner rather than weakening the
+    floor for everyone."""
+
+    allowed_ciphers: list[str] | None = None
+    allowed_digests: list[str] | None = None
+
+
 class PartnerConfig(BaseModel):
     name: str
     duns: str
@@ -49,6 +61,7 @@ class PartnerConfig(BaseModel):
     outbound_auth: AuthConfig
     inbound_auth: AuthConfig
     envelope_overrides: EnvelopeOverrides | None = None
+    crypto_overrides: CryptoOverrides | None = None
 
     @property
     def use_refnum(self) -> bool:

@@ -1,0 +1,88 @@
+POST /?package=naesb HTTP/1.1
+Date: Mon, 13 Jul 2026 19:01:55 GMT
+mime-version: 1.0
+referer: none
+message-id: <213527574.11191.1783969315031.JavaMail.fsUser@bcce-is-dfd7fc86c-9c6fk>
+content-type: multipart/form-data; boundary=FRZDf_icVIPT5sXQnexchoHf3KDp38RLt
+accept: image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, */*
+Connection: close
+Content-Length: 3059
+Host: openas2:10080
+User-Agent: TIBCO BusinessConnect
+
+--FRZDf_icVIPT5sXQnexchoHf3KDp38RLt
+Content-Disposition: form-data; name="from"
+
+007906233
+--FRZDf_icVIPT5sXQnexchoHf3KDp38RLt
+Content-Disposition: form-data; name="to"
+
+080948376
+--FRZDf_icVIPT5sXQnexchoHf3KDp38RLt
+Content-Disposition: form-data; name="version"
+
+3.0
+--FRZDf_icVIPT5sXQnexchoHf3KDp38RLt
+Content-Disposition: form-data; name="receipt-disposition-to"
+
+007906233
+--FRZDf_icVIPT5sXQnexchoHf3KDp38RLt
+Content-Disposition: form-data; name="receipt-report-type"
+
+gisb-acknowledgement-receipt
+--FRZDf_icVIPT5sXQnexchoHf3KDp38RLt
+Content-Disposition: form-data; name="input-format"
+
+X12
+--FRZDf_icVIPT5sXQnexchoHf3KDp38RLt
+Content-Disposition: form-data; name="receipt-security-selection"
+
+signed-receipt-protocol=required,pgp-signature; signed-receipt-micalg=required,sha1
+--FRZDf_icVIPT5sXQnexchoHf3KDp38RLt
+Content-Disposition: form-data; name="refnum"
+
+17839693150211649056
+--FRZDf_icVIPT5sXQnexchoHf3KDp38RLt
+Content-Disposition: form-data; name="refnum-orig"
+
+17839693150211649056
+--FRZDf_icVIPT5sXQnexchoHf3KDp38RLt
+Content-Disposition: form-data; name="input-data"; filename="Fidelis Energy-SEPt0F8dLBgiNEvjJP_2Vi6e-5Bk.dat"
+Content-Type: multipart/encrypted; boundary=--boundary2--AjQ4ur2Ejew_8oKoi53SQGLbxC6xhYhO2rc; protocol="application/pgp-encrypted"
+
+----boundary2--AjQ4ur2Ejew_8oKoi53SQGLbxC6xhYhO2rc
+content-type: application/pgp-encrypted
+
+Version: 1.46
+----boundary2--AjQ4ur2Ejew_8oKoi53SQGLbxC6xhYhO2rc
+content-type: application/octet-stream
+
+-----BEGIN PGP MESSAGE-----
+Version: BCPG FIPS 1.0.2
+
+hQIMA7k4itAEGkDkARAAwhtKdxB040UPVb1ITJEjNG0/r+Y0NTQgWsZe4n043VgB
+2Ho86u80YMgARYM8cM2vDmOBredthz2P53wm7VGMyOlyWrGEEmrQCCQioveI0nZl
+V9BPTBQdO0zPspWZuzVC967bIcaSWKiz2eFhml6fwo+LhzQyvGMKSmg5gUkK2cV+
+rkekm28RCVckOoBkVa6WI8PONLun/1bBBoK+Gn61Uar4DMM2Kwl43UsSUujOBqSc
+6NmziJBsyHJx8sj4XzEsGn+HR/tCcttPxwn3sljC+JiPoSmAu4pzB6PvHX6UHLV2
+lJECwyV5xNCWaWvZtLdY+nce+9BaK/cxFpEGuMvpOY9pZsjxl6puVuvpRMCYzmzb
+Nl7XkWvgCOItdE8kwPhRLdPQjwmon4W4UtPzI6670YM0rUVn5DQ7JK2lo9IaSMi4
+Jr4Gjj1DV5gSih0AwW/sqp+hJ0H3FCE9DF48BTuIWQ0cptlK/VBZzOdNrchtYu4N
+nO/ovy3m7WeQJCwcyxrSS7Irf9JPiGOijJcchvvxFwKVVTFA3+q+eOBw/QHiAcpl
+zoYTGydESkVzhyNMzrfp2WANDz1FNCV935cHlqIrikCNv4ud0BSaYiBLtwTOuvvq
+os03tSd6lPV8WoPdobGcDsyqp3CpW69LPZeqkSywi1AB+KxHowsN1JZYOdCzzZbS
+wRsBpUJB/lnyvO+ofwDGqWOKXmW9chWuwfZPQaLJJdIXGhJsckSSIGtG/B+HHQRw
+LUnntKIjXae1BZncdwA6gfwT6KLLlTQz6k2eTRiKOYHoQVV93WGgKl1ro4cma5Ua
+sAI65suClxypm/yNObGDiYrW3IS3pJ1mPnA6d/YOtpZQTUslDTPTY8whfeaFMYQh
+3TBqzDnaDJYnpvBy8f0IBIkv1gIvpYJKm5QvLDFRtZXyS0pjNZ5bVsvq2/Gfxli+
+kHkoiKq9UFVUuKm1gUYEdnwqPwSTvL8grObseDvSRKD5CL1c5NS7ByV80r3dj1F4
+QqTIUrVzcZtT9TQkJIQobHdS+HywDiizq1iD9Yw+CWE8Na9JXP8JnuwU78vJwwTC
+rzxuv7C0U/XUi7TlztrYDKxN9ZhrDWeKUpl2Jpfft4M4oKAGiAvmhCL5aNFiXZSx
+bscGIVbrRo31pLx1e6HJQCrMgSD4GnV7TyqFNqiK09y9mMrMu85ReM2omWD/gGXF
+jWcmW9oeBYzo/0RgZYsK/mE3QRSlexJhMJtqNUgaIcLp+uMbBnUqeFhjt/l4r4FP
+Lc8rH8Zn6Gth3ACkls99jRt5JT4pZjzwhJ0CKa0SubcgXM8uS8LuqOwOS+DC
+=UDwu
+-----END PGP MESSAGE-----
+----boundary2--AjQ4ur2Ejew_8oKoi53SQGLbxC6xhYhO2rc--
+
+--FRZDf_icVIPT5sXQnexchoHf3KDp38RLt--

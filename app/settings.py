@@ -50,6 +50,21 @@ class CryptoConfig(BaseModel):
     digest_algo: str = "SHA256"
     compress_algo: str = "ZIP"
     tls_min_version: str = "1.2"
+    # Accept-list for algorithms found in *inbound* decrypted messages
+    # (app/crypto/policy.py::enforce_policy(), called from
+    # app/inbound/routes.py) and in partner receipt signatures
+    # (app/outbound/client.py). Distinct from cipher_algo/digest_algo above,
+    # which are what *this gateway* uses when it encrypts/signs -- NAESB
+    # itself doesn't mandate a specific cipher/digest (standard 12.3.26), so
+    # this is deliberately broader than our own outbound default to tolerate
+    # real trading partners' older PGP libraries (e.g. still-common SHA1
+    # signatures). A partner needing something outside this default (e.g.
+    # 3DES) can opt in via that partner's `crypto_overrides` in
+    # partners.yaml rather than weakening this global floor.
+    allowed_ciphers: list[str] = Field(default_factory=lambda: ["AES256", "AES192", "AES128"])
+    allowed_digests: list[str] = Field(
+        default_factory=lambda: ["SHA256", "SHA384", "SHA512", "SHA1"]
+    )
 
     @property
     def passphrase(self) -> str:

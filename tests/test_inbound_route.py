@@ -365,6 +365,83 @@ def test_sink_failure_rejected_when_no_durable_sink_succeeds(settings, partners,
     assert "GWX-SINK-FAILURE" in receipt.request_status
 
 
+def test_realistic_partner_shape_sha1_armored_dash_boundary_accepted(
+    settings, partners, gpg_service, fingerprints, tracker, recording_sink, gnupg_home, us_key, partner_key
+):
+    """Reproduces the structural quirks consistently seen in real
+    trading-partner captures (samples/request-ssc-*.txt), none of which our
+    own build_multipart_body()/wrap_pgp_encrypted() ever exercise: a SHA1
+    signature digest, ASCII-armored (not armor-less) ciphertext, an inner
+    multipart/encrypted boundary containing an embedded "--", no
+    content-transfer-encoding header on the octet-stream part, and
+    input-data placed last in the outer field order. We can't decrypt the
+    real captures (no real private key for that DUNS), so this proves the
+    pipeline accepts a message shaped exactly like theirs using test keys,
+    relying on the crypto.allowed_digests default (which now includes SHA1)
+    rather than a partner-specific override."""
+    sha1_gpg = GpgService(gnupg_home=gnupg_home, cipher_algo="AES256", digest_algo="SHA1", compress_algo="ZIP")
+    result = sha1_gpg.gpg.encrypt(
+        b"ISA*00*...",
+        recipients=[us_key],
+        sign=partner_key,
+        passphrase="partner-passphrase",
+        always_trust=True,
+        armor=True,
+        extra_args=[*sha1_gpg._encrypt_extra_args(), "--allow-weak-digest-algos"],
+    )
+    assert result.ok, f"test setup failed to build a SHA1/armored payload: {result.stderr}"
+    armored_ciphertext = bytes(result.data)
+    assert armored_ciphertext.startswith(b"-----BEGIN PGP MESSAGE-----")
+
+    inner_boundary = "--boundary2--test-dash-boundary"
+    inner_body = (
+        f"--{inner_boundary}\r\n"
+        "content-type: application/pgp-encrypted\r\n\r\n"
+        "Version: 1.46\r\n"
+        f"--{inner_boundary}\r\n"
+        "content-type: application/octet-stream\r\n\r\n"
+    ).encode() + armored_ciphertext + f"\r\n--{inner_boundary}--\r\n".encode()
+    inner_content_type = f'multipart/encrypted; boundary={inner_boundary}; protocol="application/pgp-encrypted"'
+
+    fields = _envelope_fields(
+        receipt_security_selection=(
+            "signed-receipt-protocol=required,pgp-signature; signed-receipt-micalg=required,sha1"
+        )
+    )
+    outer_boundary = "outerBoundary--test5"
+
+    def field_part(name: str, value: str) -> bytes:
+        return f'--{outer_boundary}\r\ncontent-disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode()
+
+    input_data_part = (
+        f'--{outer_boundary}\r\ncontent-disposition: form-data; name="input-data"; filename="test.dat"\r\n'
+        f"content-type: {inner_content_type}\r\n\r\n"
+    ).encode() + inner_body
+
+    body = (
+        field_part("from", fields.from_id)
+        + field_part("to", fields.to_id)
+        + field_part("version", fields.version)
+        + field_part("receipt-disposition-to", fields.receipt_disposition_to)
+        + field_part("receipt-report-type", fields.receipt_report_type)
+        + field_part("input-format", fields.input_format.value)
+        + field_part("receipt-security-selection", fields.receipt_security_selection)
+        + field_part("transaction-set", fields.transaction_set)
+        + input_data_part
+        + f"--{outer_boundary}--\r\n".encode()
+    )
+    content_type = f"multipart/form-data; boundary={outer_boundary}"
+
+    client = build_client(settings, partners, gpg_service, fingerprints, tracker, [recording_sink])
+    response = client.post("/inbound", headers={**_auth_headers(), "content-type": content_type}, content=body)
+
+    assert response.status_code == 200
+    receipt = _decode_receipt(gpg_service, us_key, response)
+    assert receipt.is_ok, receipt.request_status
+    assert len(recording_sink.received) == 1
+    assert recording_sink.received[0].plaintext == b"ISA*00*..."
+
+
 def test_missing_field_rejected_with_exact_eedm_code(settings, partners, gpg_service, fingerprints, tracker, recording_sink, us_key, partner_key):
     client = build_client(settings, partners, gpg_service, fingerprints, tracker, [recording_sink])
     body, content_type = _build_body(gpg_service, us_key, partner_key, "partner-passphrase")

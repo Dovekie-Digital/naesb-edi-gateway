@@ -1,0 +1,91 @@
+POST /?package=naesb HTTP/1.1
+Date: Mon, 13 Jul 2026 16:34:29 GMT
+mime-version: 1.0
+referer: none
+message-id: <1641253210.12771.1783960469245.JavaMail.fsUser@bcce-is-dfd7fc86c-jhj48>
+content-type: multipart/form-data; boundary=g3zu2xAinkqE4JsqwPIm0aL2OFNCnH_--eLMRood
+accept: image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, */*
+Connection: close
+Content-Length: 3315
+Host: openas2:10080
+User-Agent: TIBCO BusinessConnect
+
+--g3zu2xAinkqE4JsqwPIm0aL2OFNCnH_--eLMRood
+Content-Disposition: form-data; name="from"
+
+007906233
+--g3zu2xAinkqE4JsqwPIm0aL2OFNCnH_--eLMRood
+Content-Disposition: form-data; name="to"
+
+080948376
+--g3zu2xAinkqE4JsqwPIm0aL2OFNCnH_--eLMRood
+Content-Disposition: form-data; name="version"
+
+3.0
+--g3zu2xAinkqE4JsqwPIm0aL2OFNCnH_--eLMRood
+Content-Disposition: form-data; name="receipt-disposition-to"
+
+007906233
+--g3zu2xAinkqE4JsqwPIm0aL2OFNCnH_--eLMRood
+Content-Disposition: form-data; name="receipt-report-type"
+
+gisb-acknowledgement-receipt
+--g3zu2xAinkqE4JsqwPIm0aL2OFNCnH_--eLMRood
+Content-Disposition: form-data; name="input-format"
+
+X12
+--g3zu2xAinkqE4JsqwPIm0aL2OFNCnH_--eLMRood
+Content-Disposition: form-data; name="receipt-security-selection"
+
+signed-receipt-protocol=required,pgp-signature; signed-receipt-micalg=required,sha1
+--g3zu2xAinkqE4JsqwPIm0aL2OFNCnH_--eLMRood
+Content-Disposition: form-data; name="refnum"
+
+17839604692365789297
+--g3zu2xAinkqE4JsqwPIm0aL2OFNCnH_--eLMRood
+Content-Disposition: form-data; name="refnum-orig"
+
+17839604692365789297
+--g3zu2xAinkqE4JsqwPIm0aL2OFNCnH_--eLMRood
+Content-Disposition: form-data; name="input-data"; filename="Fidelis Energy-7vGncB0JL3EkB-0cl5_2Vi-fUB4E.dat"
+Content-Type: multipart/encrypted; boundary=--boundary2--GeBUpRRSLkK4iTHuk96_hUe_o8SfPO2LRRlfOwm; protocol="application/pgp-encrypted"
+
+----boundary2--GeBUpRRSLkK4iTHuk96_hUe_o8SfPO2LRRlfOwm
+content-type: application/pgp-encrypted
+
+Version: 1.46
+----boundary2--GeBUpRRSLkK4iTHuk96_hUe_o8SfPO2LRRlfOwm
+content-type: application/octet-stream
+
+-----BEGIN PGP MESSAGE-----
+Version: BCPG FIPS 1.0.2
+
+hQIMA7k4itAEGkDkARAAjo/CM13GbPMPgaaqgl7rgNhb4Q+qvCTe+P3FCx7hAHCv
+CzDdEppQ6dQj6CZQ7fBvo5Pq9DS4S6tw6i3+WHj93TNnQBsJmLjcCU4H1Gr7iUCj
+oWHOYfCMeID0aWSwX3AwBa/5OBUpatnKcgiywHN2qsxLQ4O6+LRUqgTk66Z4WVQ1
+ZJGENskqfC4VEQSo0x+Awt/jk5+jimjjC6Lkg0OjoQJP5yy0ZWs8Pbpwciq16yD8
+p5HtlQmsfNTpcPScWTiTt0QZCELeO2I8sfbncr8aT2Mx+TFti59BSwqHUGzcSHYG
+MVAnQfRnG3SJPUfNO4LUwPOJTnTKUGrCIgYg8KL3e7o0yhtk66HgDzDyfFBVMI0V
+NwgydiyATupAY/dqsNj9Gim9okiAnWlZ1WXDkWTYdbmXtBInuLp5M0dYnsNhGC49
+5xm6/IXLETY9QvpCDygHP7kKi+kUIocpLFXSAFsEqVvFbGUAsXg5zWybUzowHm0G
+FfThqGK58+OOaMPE31HwIKx4n8lH90n3+RLkT+4UZTXDf1+mkUIfhUCuRlcBL6hL
+Q3bNF4xjgtTqzS8eZff8w0ifrhR38xAvyY75Zmlx0iUpPcVBznPOlqotYDcPNF3h
+ImLom0/zUpDyxN4FJiTmfAwdfYIS+OB/YUtDMNzmnXh4t0BeUBhc24umKSuEKynS
+wZEBErI5MCvfpTJhVhmNIG+2zfgy8nahvunj/cSF0v2StGZbpewezyRu5Okn4bnB
+1ij3sfDxIneMF2RpE/NRMxCQUOE7oJe3keAWHouYt8Zjk4PysDLKt6ebQz9dPe2R
+cMBRwmIkHjrQhvJRVVXSL/yBYf9ZVPgm3sBrvASOW7a1Z+jvMYLB74XTkg63RSWY
+9bQ0Gv/BxIkdimIpwcjl53FImSMuYp1o0C3DmHxUZPzFIfP1z4yP9snDz/qBf7cH
+/uGsoa9Jn3LQi7iiU2fQIgwFAKkYAVh+iCe81WpSpC3ocskis6oxU0m9vhg4fdtF
+Jp4pCuIY8MW6+AAtlCGCBXpZwB/ek+Owi4tvnOzeZ2xNrx2UXcynogslq5Bg7xnd
+h85F59SpYMjT25g+5fRQ1HEjetF9RwiEEDBTDgTto2w9gEtLKwZ2j5ZWeoBi5bjP
+Dz7GiBFK4Ov3XvLfkmyOXF350h3XjNIItZ9NIrkCD1vgayXBLP3cSlR5wGOeXubY
+CPJSNIOWM8OkxfZHrreRpaRqiKf1iETl6bC5IcFzYEEEO88qqwYBm/CaP0kM+YF4
+Hyh0iYud1um26RDZL033f5MW7GQi/KXjDxhBDbc4Gr3EUH3PSSibvztc1aSIzTkq
+2EAUGema5UzwkmJdfVq/Zks26pOzzYkiQRAos2w8ACxFxsu/t0Ux7bfCZJ3dnn96
+35XKpk/IKcCNazSJXMWo/0VVhpA3mBR+mHSIu1Dnj/fWcYOmAwhsx4iQCg9OmEh1
+hvbmqq2P/zVjQkTo9gZ9KwiCfw==
+=jagP
+-----END PGP MESSAGE-----
+----boundary2--GeBUpRRSLkK4iTHuk96_hUe_o8SfPO2LRRlfOwm--
+
+--g3zu2xAinkqE4JsqwPIm0aL2OFNCnH_--eLMRood--

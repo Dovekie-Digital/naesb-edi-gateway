@@ -98,8 +98,14 @@ async def send_once(
     if not verify_result.valid:
         raise DeliveryAttemptError("partner receipt signature missing or invalid")
 
+    overrides = partner.crypto_overrides
+    allowed_digests = (
+        overrides.allowed_digests
+        if overrides and overrides.allowed_digests
+        else settings.crypto.allowed_digests
+    )
     try:
-        enforce_digest_policy(verify_result.algo_info.hash_algo, {settings.crypto.digest_algo})
+        enforce_digest_policy(verify_result.algo_info.hash_algo, set(allowed_digests))
     except WeakAlgorithmError as exc:
         raise DeliveryAttemptError(f"partner receipt used a weak digest algorithm: {exc}") from exc
 

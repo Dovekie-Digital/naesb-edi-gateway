@@ -24,6 +24,16 @@ crypto:
   digest_algo: SHA256             # this gateway's own local security policy -- not a NAESB mandate
   compress_algo: ZIP
   tls_min_version: "1.2"
+  # Accept-list for algorithms seen in *inbound* decrypted messages and in
+  # partner receipt signatures -- distinct from cipher_algo/digest_algo
+  # above (what we use when we encrypt/sign). Broader than our own default
+  # on purpose: NAESB doesn't mandate a specific cipher/digest (standard
+  # 12.3.26), and real trading partners' PGP libraries are often older
+  # (SHA1 signatures are still common). A partner needing something outside
+  # this list (e.g. 3DES) should get a `crypto_overrides` entry in
+  # partners.yaml rather than widening this default for everyone.
+  allowed_ciphers: [AES256, AES192, AES128]
+  allowed_digests: [SHA256, SHA384, SHA512, SHA1]
 
 envelope:
   # This gateway's `server-id` receipt field: domainname or

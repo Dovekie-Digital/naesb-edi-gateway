@@ -17,3 +17,10 @@ partners:
       version: "1.9"                 # override if this partner's TPA specifies a different Internet ET version
       agreed_transaction_sets: null  # e.g. ["NOM00001"] once the real 8-char code list is confirmed with this partner
       use_refnum: false              # set true if this partner uses refnum/refnum-orig message tracking
+    # crypto_overrides is optional -- only set for a partner whose real
+    # payloads/receipts use an algorithm outside config.yaml's
+    # crypto.allowed_ciphers/allowed_digests default (e.g. a partner still
+    # on 3DES). Leave unset to use the global default.
+    # crypto_overrides:
+    #   allowed_ciphers: [AES256, AES192, AES128, 3DES]
+    #   allowed_digests: [SHA256, SHA1]
