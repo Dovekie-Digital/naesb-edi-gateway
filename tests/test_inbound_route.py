@@ -90,13 +90,35 @@ def refnum_partner(monkeypatch):
 
 
 @pytest.fixture
+def unsigned_ok_partner(monkeypatch):
+    """A partner with a documented, accepted gap: their real system doesn't
+    PGP-sign outbound messages at all (mirrors OpenAS2's
+    reject_unsigned_messages="false", see partners.yaml's require_signature)."""
+    monkeypatch.setenv("TEST_UNSIGNED_PARTNER_IN_KEY", "unsigned-partner-inbound-key")
+    return PartnerConfig(
+        name="unsigned-ok-pipeline",
+        duns="444555666",
+        endpoint_url="https://unsigned-partner.example.com/edi/receiver-endpoint",
+        pgp_public_key_path="unused",
+        outbound_auth=BasicAuthConfig(username="u", password_env="TEST_UNSIGNED_PARTNER_OUT_PW_UNUSED"),
+        inbound_auth=ApiKeyAuthConfig(key_env="TEST_UNSIGNED_PARTNER_IN_KEY"),
+        require_signature=False,
+    )
+
+
+@pytest.fixture
 def partners(partner):
     return PartnerRegistry([partner])
 
 
 @pytest.fixture
 def fingerprints(us_key, partner_key):
-    return {"_self": us_key, PARTNER_NAME: partner_key, "refnum-pipeline": partner_key}
+    return {
+        "_self": us_key,
+        PARTNER_NAME: partner_key,
+        "refnum-pipeline": partner_key,
+        "unsigned-ok-pipeline": partner_key,
+    }
 
 
 @dataclass
@@ -286,6 +308,30 @@ def test_wrong_signer_rejected_as_signature_failure(settings, partners, gpg_serv
     receipt = _decode_receipt(gpg_service, us_key, response)
     assert not receipt.is_ok
     assert receipt.request_status.startswith("EEDM604")
+
+
+def test_unsigned_message_accepted_when_signature_not_required(
+    settings, gpg_service, fingerprints, tracker, recording_sink, us_key, unsigned_ok_partner
+):
+    partners = PartnerRegistry([unsigned_ok_partner])
+    client = build_client(settings, partners, gpg_service, fingerprints, tracker, [recording_sink])
+    fields = _envelope_fields(from_id=unsigned_ok_partner.duns)
+    encrypt_result = gpg_service.gpg.encrypt(
+        b"ISA*00*...", recipients=[us_key], sign=None, always_trust=True, armor=False
+    )
+    assert encrypt_result.ok, f"encrypt-only failed: {encrypt_result.status}"
+    body, content_type = build_multipart_body(fields, encrypt_result.data)
+    headers = {"authorization": "Bearer unsigned-partner-inbound-key", "content-type": content_type}
+
+    response = client.post("/inbound", headers=headers, content=body)
+
+    assert response.status_code == 200
+    receipt = _decode_receipt(gpg_service, us_key, response)
+    assert receipt.is_ok, receipt.request_status
+    assert len(recording_sink.received) == 1
+    (record,) = tracker.records.values()
+    assert record.status == "accepted"
+    assert record.receipt_verified is False  # accepted despite no verifiable signature
 
 
 def test_weak_cipher_rejected(settings, partners, gpg_service, fingerprints, tracker, recording_sink, gnupg_home, us_key, partner_key):

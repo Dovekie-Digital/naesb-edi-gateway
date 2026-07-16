@@ -72,6 +72,13 @@ class PartnerConfig(BaseModel):
     inbound_auth: AuthConfig
     envelope_overrides: EnvelopeOverrides | None = None
     crypto_overrides: CryptoOverrides | None = None
+    # Mirrors OpenAS2's reject_unsigned_messages="false": some real trading
+    # partners' systems don't actually PGP-sign their outbound messages
+    # despite a TPA nominally calling for it. Set false only for a partner
+    # with a documented, accepted gap -- transport-level auth (inbound_auth
+    # above) still authenticates the sender; this only stops enforcing the
+    # PGP-level signature/digest check on the payload itself.
+    require_signature: bool = True
 
     @property
     def use_refnum(self) -> bool:

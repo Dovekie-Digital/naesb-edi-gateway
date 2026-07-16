@@ -156,14 +156,29 @@ async def receive(
         return reject(NaesbErrorCode.DECRYPTION_ERROR)
 
     partner_fingerprint = fingerprints.get(partner.name)
-    if not decrypt_result.signature_valid or decrypt_result.signer_fingerprint != partner_fingerprint:
-        await tracker.update_status(
-            message_id,
-            status="rejected",
-            error_code=NaesbErrorCode.SIGNATURE_NOT_MATCHED.value,
-            receipt_verified=False,
-        )
-        return reject(NaesbErrorCode.SIGNATURE_NOT_MATCHED)
+    signature_ok = (
+        decrypt_result.signature_valid and decrypt_result.signer_fingerprint == partner_fingerprint
+    )
+    if not signature_ok:
+        if not partner.require_signature:
+            # Documented, accepted gap (partners.yaml's require_signature:
+            # false) -- mirrors OpenAS2's reject_unsigned_messages="false".
+            # Transport-level auth already authenticated this partner; log
+            # it so accepting an unverified payload is visible, not silent.
+            logger.warning(
+                "inbound_accepted_without_signature",
+                partner=partner.name,
+                trans_id=trans_id,
+                signer_fingerprint=decrypt_result.signer_fingerprint,
+            )
+        else:
+            await tracker.update_status(
+                message_id,
+                status="rejected",
+                error_code=NaesbErrorCode.SIGNATURE_NOT_MATCHED.value,
+                receipt_verified=False,
+            )
+            return reject(NaesbErrorCode.SIGNATURE_NOT_MATCHED)
 
     # Step 6: enforce this gateway's local cryptographic policy (NAESB
     # itself only mandates a minimum RSA key length -- see policy.py). A
@@ -185,6 +200,7 @@ async def receive(
             decrypt_result.algo_info,
             allowed_ciphers=set(allowed_ciphers),
             allowed_digests=set(allowed_digests),
+            require_signature=partner.require_signature,
         )
     except WeakAlgorithmError as exc:
         await tracker.update_status(
@@ -214,7 +230,7 @@ async def receive(
         return reject(GatewayExtensionCode.SINK_FAILURE)
 
     # Step 8: accepted.
-    await tracker.update_status(message_id, status="accepted", receipt_verified=True)
+    await tracker.update_status(message_id, status="accepted", receipt_verified=signature_ok)
     logger.info("inbound_accepted", partner=partner.name, digest=content_digest, trans_id=trans_id)
     receipt = NaesbReceipt.ok(settings.envelope.server_id, trans_id, time_c=received_at)
     return _signed_receipt(gpg, fingerprints, settings, receipt)

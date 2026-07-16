@@ -83,6 +83,8 @@ def enforce_policy(
     info: AlgorithmInfo,
     allowed_ciphers: set[str],
     allowed_digests: set[str],
+    *,
+    require_signature: bool = True,
 ) -> None:
     """For encrypted+signed payloads (an inbound transmission): both the
     symmetric cipher and the signature digest must be in the allowed sets.
@@ -92,14 +94,20 @@ def enforce_policy(
     security"). `allowed_ciphers`/`allowed_digests` are this gateway's own
     configured local security policy, not a spec requirement -- only the
     minimum RSA key length (check_key_length(), below) is a real NAESB
-    requirement (Appendix A)."""
+    requirement (Appendix A).
+
+    `require_signature=False` (PartnerConfig.require_signature) skips the
+    digest check entirely -- there's no signature digest to evaluate for a
+    partner whose real traffic isn't signed at all, and there's nothing
+    else in `info` that indicates a *weak* signature to reject."""
     allowed_cipher_ids = {CIPHER_ALGO_IDS[name] for name in allowed_ciphers}
 
     if info.cipher_algo not in allowed_cipher_ids:
         raise WeakAlgorithmError(
             f"symmetric cipher algo {info.cipher_algo!r} not in allowed set {allowed_ciphers}"
         )
-    enforce_digest_policy(info.hash_algo, allowed_digests)
+    if require_signature:
+        enforce_digest_policy(info.hash_algo, allowed_digests)
 
 
 def enforce_digest_policy(hash_algo: int | None, allowed_digests: set[str]) -> None:
