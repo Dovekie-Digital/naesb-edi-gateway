@@ -20,7 +20,12 @@ partners:
     # crypto_overrides is optional -- only set for a partner whose real
     # payloads/receipts use an algorithm outside config.yaml's
     # crypto.allowed_ciphers/allowed_digests default (e.g. a partner still
-    # on 3DES). Leave unset to use the global default.
+    # on 3DES), or whose on-file PGP key predates config.yaml's
+    # crypto.min_rsa_key_bits floor (e.g. a legacy 1024-bit key) and can't be
+    # rotated immediately -- min_rsa_key_bits below accepts that one
+    # partner's key without lowering the floor enforced for everyone else.
+    # Leave unset to use the global default.
     # crypto_overrides:
     #   allowed_ciphers: [AES256, AES192, AES128, 3DES]
     #   allowed_digests: [SHA256, SHA1]
+    #   min_rsa_key_bits: 1024

@@ -51,6 +51,16 @@ class CryptoOverrides(BaseModel):
 
     allowed_ciphers: list[str] | None = None
     allowed_digests: list[str] | None = None
+    # Accepts this partner's on-file PGP key below crypto.min_rsa_key_bits
+    # (NAESB Appendix A's real minimum). Only for a documented, accepted
+    # compliance gap with a specific partner's legacy key (e.g. issued before
+    # the 2048-bit floor) -- it does not touch the global floor enforced for
+    # every other key in the keyring, and should be paired with a plan to get
+    # that partner to rotate to a compliant key.
+    min_rsa_key_bits: int | None = None
+
+    allowed_ciphers: list[str] | None = None
+    allowed_digests: list[str] | None = None
 
 
 class PartnerConfig(BaseModel):

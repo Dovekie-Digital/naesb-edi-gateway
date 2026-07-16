@@ -30,6 +30,7 @@ def bootstrap_keyring(
         raise KeyringError(f"failed to import our private key from {our_private_key_path}")
     fingerprints["_self"] = import_result.fingerprints[0]
 
+    per_key_min_bits: dict[str, int] = {}
     for partner in partners:
         key_data = Path(partner.pgp_public_key_path).read_text()
         result = gpg.import_keys(key_data)
@@ -39,19 +40,29 @@ def bootstrap_keyring(
                 f"from {partner.pgp_public_key_path}"
             )
         fingerprints[partner.name] = result.fingerprints[0]
+        if partner.crypto_overrides and partner.crypto_overrides.min_rsa_key_bits is not None:
+            per_key_min_bits[result.fingerprints[0]] = partner.crypto_overrides.min_rsa_key_bits
 
-    _validate_key_lengths(gpg, min_bits, recommended_bits, logger)
+    _validate_key_lengths(gpg, min_bits, recommended_bits, logger, per_key_min_bits)
     return fingerprints
 
 
-def _validate_key_lengths(gpg: gnupg.GPG, min_bits: int, recommended_bits: int, logger: Any) -> None:
+def _validate_key_lengths(
+    gpg: gnupg.GPG,
+    min_bits: int,
+    recommended_bits: int,
+    logger: Any,
+    per_key_min_bits: dict[str, int] | None = None,
+) -> None:
+    per_key_min_bits = per_key_min_bits or {}
     all_keys = gpg.list_keys(secret=True) + gpg.list_keys(secret=False)
     for key in all_keys:
         fingerprint = key.get("fingerprint")
         algo = key.get("algo", "")
         length = int(key.get("length") or 0)
+        effective_min_bits = per_key_min_bits.get(fingerprint, min_bits)
         try:
-            check_key_length(algo, length, min_bits)
+            check_key_length(algo, length, effective_min_bits)
         except WeakAlgorithmError as exc:
             raise KeyringError(f"key {fingerprint} rejected: {exc}") from exc
         if logger is not None and length < recommended_bits:
