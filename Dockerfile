@@ -14,7 +14,7 @@ COPY app ./app
 COPY db ./db
 COPY config/config.example.yaml config/partners.example.yaml ./config/
 
-RUN mkdir -p /data/gnupg /data/inbound \
+RUN mkdir -p /data/gnupg /data/inbound /app/logs \
  && chown -R naesb:naesb /data /app
 USER naesb
 

@@ -241,6 +241,10 @@ class LoggingConfig(BaseModel):
     # sense of it. Logged at INFO, so it's still subject to `level` above
     # (e.g. level: WARNING suppresses it regardless of this flag).
     capture_raw_requests: bool = True
+    # Opt-in: when set, logs are additionally written to <directory>/app.log
+    # (rotating) on top of stdout. Unset by default -- stdout-only is the
+    # existing behavior.
+    directory: str | None = None
 
 
 class Settings(BaseModel):

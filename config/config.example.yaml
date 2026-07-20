@@ -104,5 +104,6 @@ logging:
   # Logged at INFO, so `level` above still applies (e.g. level: WARNING
   # suppresses this regardless of the flag).
   capture_raw_requests: true
+  # directory: /app/logs  # uncomment to also persist rotating log files to disk (in addition to stdout)
 
 partners_file: /app/config/partners.yaml

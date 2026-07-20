@@ -113,7 +113,7 @@ async def _handle_failure(
 async def run_worker(settings: Settings, *, iterations: int | None = None) -> None:
     """`iterations=None` runs forever (production); a finite value lets
     tests run a bounded number of poll cycles."""
-    configure_logging(settings.logging.level, settings.logging.format)
+    configure_logging(settings.logging.level, settings.logging.format, settings.logging.directory)
     partners = load_partners(settings.partners_file)
 
     Path(settings.crypto.gnupg_home).mkdir(parents=True, exist_ok=True, mode=0o700)

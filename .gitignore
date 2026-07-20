@@ -16,5 +16,6 @@ config/keys/
 
 # data volumes for local dev
 data/
+logs/
 
 .DS_Store

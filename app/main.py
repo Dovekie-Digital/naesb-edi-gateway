@@ -57,7 +57,7 @@ def _build_sinks(settings: Settings) -> list[Sink]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    configure_logging(settings.logging.level, settings.logging.format)
+    configure_logging(settings.logging.level, settings.logging.format, settings.logging.directory)
 
     partners = load_partners(settings.partners_file)
 

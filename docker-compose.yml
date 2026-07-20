@@ -13,6 +13,7 @@ services:
       - ./config:/app/config:ro
       - gnupg_data:/data/gnupg
       - inbound_data:/data/inbound
+      - ./logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -29,6 +30,7 @@ services:
       - ./config:/app/config:ro
       - gnupg_data:/data/gnupg
       - inbound_data:/data/inbound
+      - ./logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
