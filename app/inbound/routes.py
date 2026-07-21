@@ -89,7 +89,7 @@ async def receive(
         receipt = NaesbReceipt.rejected(
             settings.envelope.server_id, trans_id, code, message, time_c=received_at
         )
-        return _signed_receipt(gpg, fingerprints, settings, receipt)
+        return _signed_receipt(gpg, fingerprints, settings, receipt, partner_name=partner.name, trans_id=trans_id)
 
     # Step 2: parse the multipart/form-data envelope + unwrap input-data.
     try:
@@ -279,7 +279,7 @@ async def receive(
             "inbound_accepted", partner=partner.name, digest=content_digest, trans_id=trans_id
         )
         receipt = NaesbReceipt.ok(settings.envelope.server_id, trans_id, time_c=received_at)
-        return _signed_receipt(gpg, fingerprints, settings, receipt)
+        return _signed_receipt(gpg, fingerprints, settings, receipt, partner_name=partner.name, trans_id=trans_id)
     except Exception:
         logger.exception(
             "inbound_processing_failed", partner=partner.name, trans_id=trans_id
@@ -298,10 +298,27 @@ def _redact_headers(headers: Mapping[str, str]) -> dict[str, str]:
 
 
 def _signed_receipt(
-    gpg: GpgService, fingerprints: dict[str, str], settings: Settings, receipt: NaesbReceipt
+    gpg: GpgService,
+    fingerprints: dict[str, str],
+    settings: Settings,
+    receipt: NaesbReceipt,
+    *,
+    partner_name: str,
+    trans_id: int,
 ) -> Response:
     report_body, report_content_type = receipt.encode_report_part()
     signature = gpg.detached_sign(report_body, fingerprints["_self"], settings.crypto.passphrase)
     micalg = f"pgp-{settings.crypto.digest_algo.lower()}"
     signed_body, content_type = build_signed_mime(report_body, report_content_type, signature, micalg)
+
+    if settings.logging.capture_raw_requests:
+        logger.info(
+            "inbound_raw_receipt",
+            partner=partner_name,
+            trans_id=trans_id,
+            content_type=content_type,
+            body_base64=base64.b64encode(signed_body).decode("ascii"),
+            body_length=len(signed_body),
+        )
+
     return Response(content=signed_body, media_type=content_type, status_code=200)
