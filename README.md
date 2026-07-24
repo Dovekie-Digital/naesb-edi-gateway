@@ -97,6 +97,14 @@ WGQ Cybersecurity Related Standards manual.
   that schedule is exhausted. Run it alongside the main app (see
   `docker-compose.yml`'s `worker` service) -- `POST /outbound/send` only
   enqueues a job and returns `202`; it never blocks on delivery.
+- **`app/poller.py`**: an alternative, filesystem-based way to enqueue an
+  outbound transmission -- watches `poller.base_dir/<partner-duns>/` for raw,
+  unencrypted EDI files, and enqueues each one the same way `POST
+  /outbound/send` does (`app/outbound/enqueue.py`) once it's been unmodified
+  for `poller.quiet_period_seconds`. Also its own process (`docker-compose.yml`'s
+  `poller` service, disabled by default via `poller.enabled: false`); see
+  `docs/outbound-flow.md` §0 for the full folder-layout/processed/error
+  contract.
 - **python-gnupg** (wraps system `gpg`) for all OpenPGP operations
   (`app/crypto/`), including detached-signature support for the receipt.
 - MIME construction/parsing is hand-rolled (`app/envelope/mime_split.py`,
@@ -148,7 +156,7 @@ WGQ Cybersecurity Related Standards manual.
    is loaded automatically by `docker-compose.yml`; outside Docker,
    `source`/export it yourself before starting the app or worker.
 4. Provision a Postgres database; migrations in `db/migrations/` are applied
-   automatically on startup by both the app and the worker.
+   automatically on startup by the app, the worker, and the poller.
 5. Set `envelope.server_id` (this gateway's `server-id` receipt field) and
    `envelope.default_version` (the NAESB Internet ET protocol version --
    confirm the correct value with your Trading Partner Agreement; there is
@@ -160,10 +168,13 @@ WGQ Cybersecurity Related Standards manual.
 docker-compose up --build
 ```
 
-This starts the app, the outbound worker, a local Postgres, and a MinIO
-instance (for testing the S3 sink). Both `app` and `worker` expect
-`config/config.yaml` and `config/partners.yaml` to exist (step 1 above) --
-they're mounted read-only into the containers.
+This starts the app, the outbound worker, the outbound file-drop poller, a
+local Postgres, and a MinIO instance (for testing the S3 sink). `app`,
+`worker`, and `poller` all expect `config/config.yaml` and
+`config/partners.yaml` to exist (step 1 above) -- they're mounted read-only
+into the containers. The poller is a no-op until `poller.enabled: true` is
+set in `config.yaml` and `poller.base_dir` (default `/data/outbound`,
+mounted from the `outbound_data` volume) has partner-DUNS subfolders.
 
 Without Docker:
 ```
@@ -173,6 +184,7 @@ set -a && source config/.env && set +a
 export NAESB_CONFIG_PATH=config/config.yaml
 uvicorn app.main:app --reload &
 python -m app.worker &
+python -m app.poller &
 ```
 
 ## API
@@ -186,7 +198,9 @@ python -m app.worker &
   `202` immediately with a job id; delivery (including retries spanning the
   Exchange Failure window) happens asynchronously via the worker. Body:
   `{"partner_name": ..., "input_format": "X12", "transaction_set": "...",
-  "refnum": "...", "payload_base64": "..."}`.
+  "refnum": "...", "payload_base64": "..."}`. A raw, unencrypted EDI file
+  dropped onto disk under `poller.base_dir/<partner-duns>/` is enqueued the
+  same way, without an API call -- see `docs/outbound-flow.md` §0.
 - `GET /outbound/jobs/{job_id}` -- polls an outbound job's status
   (`queued` / `in_progress` / `delivered` / `failed_nack` /
   `exchange_failure`), attempt count, and receipt details once delivered.
