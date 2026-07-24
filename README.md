@@ -86,25 +86,26 @@ top) and kept only for historical reference. Do not use it.
 against your actual Trading Partner Agreement (TPA) and the licensed NAESB
 WGQ Cybersecurity Related Standards manual.
 
+## Processes
+
+Three independent processes/containers, sharing the same Postgres database, GPG keyring,
+and partner config -- each with a single, non-overlapping job:
+
+| Process  | Entrypoint            | Docker Compose service | Responsibility |
+| -------- | ---------------------- | ----------------------- | -------------- |
+| `app`    | `uvicorn app.main:app` | `app`                    | The synchronous HTTP server. Receives inbound partner transmissions end-to-end (auth, decrypt, verify, sink fan-out, signed receipt) and *enqueues* outbound transmissions (`POST /outbound/send` inserts an `outbound_jobs` row and returns `202` immediately). Never performs an outbound delivery attempt itself. |
+| `worker` | `python -m app.worker` | `worker`                 | The only process that actually talks to a trading partner outbound. Polls `outbound_jobs` for due jobs, performs the real HTTP delivery attempt (`app/outbound/client.py::send_once()`), verifies the partner's signed receipt, and owns retry scheduling / Exchange-Failure declaration (`outbound.retry_schedule_seconds`, standards 12.3.10/12.3.11). |
+| `poller` | `python -m app.poller` | `poller` (disabled by default via `poller.enabled: false`) | An alternate *on-ramp* into the same `outbound_jobs` queue -- never delivers anything itself. Watches `poller.base_dir/<partner-duns>/` for raw, unencrypted EDI files dropped by internal systems, and once a file's been unmodified for `poller.quiet_period_seconds`, enqueues it exactly the way `POST /outbound/send` does (`app/outbound/enqueue.py`), then moves it to that partner's `processed/` (enqueued) or `error/` (pickup failed repeatedly) subfolder. |
+
+`app` and `worker` are always required; `poller` is optional and a no-op until
+`poller.enabled: true` is set. See `docs/outbound-flow.md` §0 for the poller's full
+folder-layout/processed/error contract.
+
 ## Architecture
 
 - **FastAPI** inbound HTTP server (`app/inbound/routes.py`) + **httpx**
   outbound client (`app/outbound/client.py`, single delivery attempt per
-  call).
-- **`app/worker.py`**: a separate process that polls the `outbound_jobs`
-  table for due delivery attempts and executes them, rescheduling per
-  `outbound.retry_schedule_seconds` or declaring an `exchange_failure` once
-  that schedule is exhausted. Run it alongside the main app (see
-  `docker-compose.yml`'s `worker` service) -- `POST /outbound/send` only
-  enqueues a job and returns `202`; it never blocks on delivery.
-- **`app/poller.py`**: an alternative, filesystem-based way to enqueue an
-  outbound transmission -- watches `poller.base_dir/<partner-duns>/` for raw,
-  unencrypted EDI files, and enqueues each one the same way `POST
-  /outbound/send` does (`app/outbound/enqueue.py`) once it's been unmodified
-  for `poller.quiet_period_seconds`. Also its own process (`docker-compose.yml`'s
-  `poller` service, disabled by default via `poller.enabled: false`); see
-  `docs/outbound-flow.md` §0 for the full folder-layout/processed/error
-  contract.
+  call). See "Processes" above for how `app`/`worker`/`poller` divide this up.
 - **python-gnupg** (wraps system `gpg`) for all OpenPGP operations
   (`app/crypto/`), including detached-signature support for the receipt.
 - MIME construction/parsing is hand-rolled (`app/envelope/mime_split.py`,
