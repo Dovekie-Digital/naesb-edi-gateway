@@ -12,15 +12,6 @@ see `docs/NAESB-cyber0923-2026-0709.pdf`): a `multipart/form-data` HTTP POST
 carrying named envelope fields plus a PGP-encrypted payload, answered
 synchronously with a `multipart/signed` "gisb-acknowledgement-receipt".
 
-## A note on `docs/naesb4.md`
-
-An earlier version of this project was built against `docs/naesb4.md`, a
-document that turned out to be **fabricated** -- it invents a wire format,
-receipt structure, and error-code scheme that don't exist in the real NAESB
-standard. The entire transport layer was reworked from scratch against the
-real manual. `docs/naesb4.md` is quarantined (see the warning banner at its
-top) and kept only for historical reference. Do not use it.
-
 ## Spec provenance -- read before connecting a real trading partner
 
 - **Transport**: `POST` with `Content-Type: multipart/form-data`. Envelope
