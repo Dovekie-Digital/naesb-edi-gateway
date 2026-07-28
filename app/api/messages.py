@@ -8,7 +8,7 @@ from app.api.partners import require_internal_auth
 from app.dependencies import get_tracker
 from app.tracking.repository import RESERVED_STATUSES, MessageTracker
 
-router = APIRouter(tags=["messages"])
+router = APIRouter(prefix="/api", tags=["messages"])
 
 
 class MessageSummaryResponse(BaseModel):
@@ -33,7 +33,7 @@ class UpdateStatusResponse(BaseModel):
     skipped: list[uuid.UUID]
 
 
-@router.get("/inbound/messages", response_model=list[MessageSummaryResponse])
+@router.get("/messages", response_model=list[MessageSummaryResponse])
 async def list_messages(
     status: str,
     partner_name: str | None = None,
@@ -63,7 +63,7 @@ async def list_messages(
     ]
 
 
-@router.post("/inbound/messages/status", response_model=UpdateStatusResponse)
+@router.post("/messages/status", response_model=UpdateStatusResponse)
 async def update_message_status(
     body: UpdateStatusRequest,
     _: None = Depends(require_internal_auth),

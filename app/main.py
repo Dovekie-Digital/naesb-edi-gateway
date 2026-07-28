@@ -108,7 +108,7 @@ def register_protected_docs(app: FastAPI) -> None:
     docs_url=None, redoc_url=None, openapi_url=None -- by default FastAPI
     serves these unauthenticated, which would let anyone unauthenticated
     browse this gateway's internal API surface (request/response schemas
-    for /outbound/send, /inbound/messages, etc)."""
+    for /outbound/send, /api/messages, etc)."""
 
     @app.get("/openapi.json", include_in_schema=False)
     async def openapi_spec(_: None = Depends(require_internal_auth)) -> JSONResponse:

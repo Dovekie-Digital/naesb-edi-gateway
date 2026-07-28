@@ -71,7 +71,7 @@ def _basic_auth_header(username: str, password: str) -> dict[str, str]:
 
 def test_list_messages_requires_auth(settings, tracker):
     client = build_client(settings, tracker)
-    response = client.get("/inbound/messages", params={"status": "accepted"})
+    response = client.get("/api/messages", params={"status": "accepted"})
     assert response.status_code == 401
     assert response.headers["www-authenticate"] == "Basic"
 
@@ -79,7 +79,7 @@ def test_list_messages_requires_auth(settings, tracker):
 def test_list_messages_rejects_wrong_credentials(settings, tracker):
     client = build_client(settings, tracker)
     response = client.get(
-        "/inbound/messages", params={"status": "accepted"}, headers=_basic_auth_header("admin", "wrong")
+        "/api/messages", params={"status": "accepted"}, headers=_basic_auth_header("admin", "wrong")
     )
     assert response.status_code == 401
 
@@ -102,7 +102,7 @@ def test_list_messages_returns_summaries(settings, tracker):
     client = build_client(settings, tracker)
 
     response = client.get(
-        "/inbound/messages",
+        "/api/messages",
         params={"status": "accepted", "partner_name": "acme-pipeline"},
         headers=_basic_auth_header("admin", "s3cr3t"),
     )
@@ -119,7 +119,7 @@ def test_list_messages_returns_summaries(settings, tracker):
 
 def test_update_message_status_requires_auth(settings, tracker):
     client = build_client(settings, tracker)
-    response = client.post("/inbound/messages/status", json={"message_ids": [str(uuid.uuid4())]})
+    response = client.post("/api/messages/status", json={"message_ids": [str(uuid.uuid4())]})
     assert response.status_code == 401
     assert response.headers["www-authenticate"] == "Basic"
 
@@ -131,7 +131,7 @@ def test_update_message_status_returns_updated_and_skipped(settings, tracker):
     client = build_client(settings, tracker)
 
     response = client.post(
-        "/inbound/messages/status",
+        "/api/messages/status",
         json={"message_ids": [str(updated_id), str(skipped_id)], "status": "processed"},
         headers=_basic_auth_header("admin", "s3cr3t"),
     )
@@ -149,7 +149,7 @@ def test_update_message_status_rejects_reserved_status(settings, tracker):
     client = build_client(settings, tracker)
 
     response = client.post(
-        "/inbound/messages/status",
+        "/api/messages/status",
         json={"message_ids": [str(uuid.uuid4())], "status": "accepted"},
         headers=_basic_auth_header("admin", "s3cr3t"),
     )

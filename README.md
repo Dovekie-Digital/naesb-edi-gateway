@@ -200,10 +200,12 @@ python -m app.poller &
   `endpoint_url`, `has_envelope_overrides`); never returns auth credentials
   or key paths. Protected by HTTP Basic auth against
   `internal_api.username_env`/`password_env` in `config.yaml`.
-- `GET /inbound/messages?status=...` -- lists messages by status (optionally
+- `GET /api/messages?status=...` -- lists messages by status (optionally
   filtered by `partner_name`), for a downstream consumer to discover what's
-  outstanding (e.g. `?status=accepted`).
-- `POST /inbound/messages/status` -- bulk-transitions messages currently
+  outstanding (e.g. `?status=accepted`). Deliberately kept under `/api`
+  rather than `{server.inbound_path}` so it's never reachable by an
+  external trading partner.
+- `POST /api/messages/status` -- bulk-transitions messages currently
   `accepted` into a downstream-owned terminal status (`processed` by
   default), once a downstream system has consumed the delivered content.
   Body: `{"message_ids": [...], "status": "processed"}`. Ids that aren't

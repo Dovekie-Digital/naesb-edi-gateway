@@ -236,10 +236,13 @@ detected duplicate.
   that id to report back once it has consumed the file.
 - **Marking a message processed**: once a downstream system has consumed a
   delivered message, it can record that fact via two internal, Basic-auth
-  endpoints (same credentials as `/outbound/send`):
-  - `GET /inbound/messages?status=accepted` — list messages by status
+  endpoints under `/api` (same credentials and path family as
+  `/api/partners`; deliberately kept off the partner-facing
+  `{server.inbound_path}` prefix so it can never be reached by an external
+  trading partner):
+  - `GET /api/messages?status=accepted` — list messages by status
     (optionally filtered by `partner_name`), to discover what's outstanding.
-  - `POST /inbound/messages/status` with `{"message_ids": [...], "status":
+  - `POST /api/messages/status` with `{"message_ids": [...], "status":
     "processed"}` — bulk-transitions messages currently `accepted` into a
     downstream-owned terminal status (`processed` by default; any status
     other than the gateway's own `processing`/`accepted`/`rejected` is

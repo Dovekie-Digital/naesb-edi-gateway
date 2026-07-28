@@ -1,7 +1,7 @@
 """End-to-end validation of the S3 sink against a real MinIO instance (not
 moto's mocked boto3) plus a real Postgres-backed MessageTracker, covering the
 full path this PR adds: inbound acceptance -> S3 object keyed by the
-message's row id -> GET /inbound/messages -> POST /inbound/messages/status.
+message's row id -> GET /api/messages -> POST /api/messages/status.
 
 Exercises `S3Sink`'s `endpoint_url` argument for real (moto intercepts
 boto3 regardless of endpoint_url, so tests/test_sinks_s3.py never actually
@@ -252,7 +252,7 @@ async def test_inbound_message_lands_in_s3_and_is_markable_processed(
 
     # A downstream consumer discovers it via the list API...
     list_response = client.get(
-        "/inbound/messages",
+        "/api/messages",
         params={"status": "accepted", "partner_name": PARTNER_NAME},
         headers=_basic_auth_header("admin", "s3cr3t"),
     )
@@ -263,7 +263,7 @@ async def test_inbound_message_lands_in_s3_and_is_markable_processed(
 
     # ...and marks it processed via the update API.
     update_response = client.post(
-        "/inbound/messages/status",
+        "/api/messages/status",
         json={"message_ids": [str(message_id)]},
         headers=_basic_auth_header("admin", "s3cr3t"),
     )
