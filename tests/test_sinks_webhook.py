@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 from datetime import UTC, datetime
 
 import httpx
@@ -11,6 +12,7 @@ from app.sinks.webhook_sink import WebhookSink
 
 def _message() -> InboundMessage:
     return InboundMessage(
+        message_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
         partner_name="acme-pipeline",
         content_digest="abc123",
         envelope=EnvelopeFields(
@@ -38,6 +40,7 @@ def test_webhook_sink_posts_payload():
     assert route.called
     sent_body = route.calls.last.request.content
     assert b"acme-pipeline" in sent_body
+    assert b"11111111-1111-1111-1111-111111111111" in sent_body
 
 
 @respx.mock

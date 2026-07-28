@@ -256,6 +256,7 @@ async def receive(
 
         # Step 7: fan out to configured sinks.
         inbound_message = InboundMessage(
+            message_id=message_id,
             partner_name=partner.name,
             content_digest=content_digest,
             envelope=fields,

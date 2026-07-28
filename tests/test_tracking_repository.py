@@ -143,6 +143,54 @@ async def test_create_persists_from_and_to_id(tracker, pool):
     assert row == ("123456789", "987654321")
 
 
+async def test_list_by_status_filters_direction_status_and_partner(tracker):
+    # Distinct partner names (not reused by any other test in this module,
+    # which shares a single module-scoped Postgres container) so this
+    # assertion isn't polluted by rows left behind by other tests.
+    accepted = MessageRecord(
+        direction="inbound", partner_name="list-status-partner-a", content_digest="j" * 64, status="accepted"
+    )
+    other_partner = MessageRecord(
+        direction="inbound", partner_name="list-status-partner-b", content_digest="k" * 64, status="accepted"
+    )
+    rejected = MessageRecord(
+        direction="inbound", partner_name="list-status-partner-a", content_digest="l" * 64, status="rejected"
+    )
+    accepted_id = await tracker.create(accepted)
+    await tracker.create(other_partner)
+    await tracker.create(rejected)
+
+    results = await tracker.list_by_status("accepted", partner_name="list-status-partner-a")
+    assert [r.id for r in results] == [accepted_id]
+    assert results[0].status == "accepted"
+
+
+async def test_mark_processed_transitions_accepted_only(tracker):
+    accepted = MessageRecord(
+        direction="inbound", partner_name="acme-pipeline", content_digest="m" * 64, status="accepted"
+    )
+    rejected = MessageRecord(
+        direction="inbound", partner_name="acme-pipeline", content_digest="n" * 64, status="rejected"
+    )
+    accepted_id = await tracker.create(accepted)
+    rejected_id = await tracker.create(rejected)
+    missing_id = await tracker.create(
+        MessageRecord(
+            direction="inbound", partner_name="acme-pipeline", content_digest="o" * 64, status="accepted"
+        )
+    )
+
+    result = await tracker.mark_processed([accepted_id, rejected_id])
+
+    assert result.updated == [accepted_id]
+    assert set(result.skipped) == {rejected_id}
+
+    # already-processed ids are skipped on a repeat call, not re-updated
+    second_call = await tracker.mark_processed([accepted_id, missing_id])
+    assert second_call.updated == [missing_id]
+    assert second_call.skipped == [accepted_id]
+
+
 async def test_outbound_job_create_claim_and_deliver(job_repository):
     job = OutboundJob(
         id=None,

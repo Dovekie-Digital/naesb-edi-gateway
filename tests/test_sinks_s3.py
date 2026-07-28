@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 from datetime import UTC, datetime
 
 import boto3
@@ -12,6 +13,7 @@ from app.sinks.s3_sink import S3Sink
 
 def _message(**overrides) -> InboundMessage:
     defaults = dict(
+        message_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
         partner_name="acme-pipeline",
         content_digest="abc123def456" + "0" * 52,
         envelope=EnvelopeFields(

@@ -1,3 +1,4 @@
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -9,6 +10,7 @@ class InboundMessage:
     """A successfully decrypted, verified inbound transmission, ready for
     delivery to sinks and tracking."""
 
+    message_id: uuid.UUID
     partner_name: str
     content_digest: str
     envelope: EnvelopeFields

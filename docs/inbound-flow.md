@@ -229,6 +229,24 @@ detected duplicate.
   X12 nominations) to pick up and act on. Reading, parsing, and acting on
   the X12 *content* itself is explicitly outside this gateway's scope —
   its job ends at "delivered somewhere durable, with proof."
+- **Correlating a delivered file back to its row**: each sink names/tags the
+  delivered content with the message's `messages.id` (UUID) — it's the
+  filename/object-key component for the filesystem and S3 sinks, and the
+  `message_id` field in the webhook JSON payload. A downstream consumer uses
+  that id to report back once it has consumed the file.
+- **Marking a message processed**: once a downstream system has consumed a
+  delivered message, it can record that fact via two internal, Basic-auth
+  endpoints (same credentials as `/outbound/send`):
+  - `GET /inbound/messages?status=accepted` — list messages by status
+    (optionally filtered by `partner_name`), to discover what's outstanding.
+  - `POST /inbound/messages/status` with `{"message_ids": [...], "status":
+    "processed"}` — bulk-transitions messages currently `accepted` into a
+    downstream-owned terminal status (`processed` by default; any status
+    other than the gateway's own `processing`/`accepted`/`rejected` is
+    allowed). Ids that aren't currently `accepted` are reported back as
+    `skipped` rather than causing the whole call to fail.
+  This is purely additive bookkeeping — the gateway's own accept/reject
+  pipeline never reads or depends on this status.
 
 ## Error code quick reference
 

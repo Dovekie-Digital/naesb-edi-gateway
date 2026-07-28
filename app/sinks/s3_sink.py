@@ -47,7 +47,7 @@ class S3Sink:
         key = (
             f"{self.prefix}{message.envelope.from_id}/"
             f"{message.received_at.strftime('%Y%m%dT%H%M%SZ')}"
-            f"_{message.content_digest[:16]}"
+            f"_{message.message_id}"
             f"_{transaction_set}.edi"
         )
         self.client.put_object(Bucket=self.bucket, Key=key, Body=message.plaintext)

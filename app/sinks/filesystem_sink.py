@@ -30,7 +30,7 @@ class FilesystemSink:
         transaction_set = message.envelope.transaction_set or "unspecified"
         filename = (
             f"{message.received_at.strftime('%Y%m%dT%H%M%SZ')}"
-            f"_{message.content_digest[:16]}"
+            f"_{message.message_id}"
             f"_{transaction_set}.edi"
         )
         (partner_dir / filename).write_bytes(message.plaintext)
