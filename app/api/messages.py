@@ -8,7 +8,7 @@ from app.api.partners import require_internal_auth
 from app.dependencies import get_tracker
 from app.tracking.repository import RESERVED_STATUSES, MessageTracker
 
-router = APIRouter()
+router = APIRouter(tags=["messages"])
 
 
 class MessageSummaryResponse(BaseModel):

@@ -8,7 +8,7 @@ from app.dependencies import get_partners, get_settings
 from app.partners import PartnerRegistry
 from app.settings import Settings
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api", tags=["partners"])
 security = HTTPBasic()
 
 

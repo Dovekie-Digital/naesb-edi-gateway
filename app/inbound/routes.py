@@ -31,7 +31,7 @@ from app.tracking.repository import MessageTracker
 
 logger = structlog.get_logger()
 
-router = APIRouter()
+router = APIRouter(tags=["inbound"])
 
 
 @router.post("")
