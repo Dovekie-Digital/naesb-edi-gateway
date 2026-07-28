@@ -8,6 +8,8 @@ class MessageRecord:
     direction: str  # "inbound" | "outbound"
     partner_name: str
     content_digest: str
+    from_id: str | None = None
+    to_id: str | None = None
     transaction_set: str | None = None
     input_format: str | None = None
     status: str = "pending"

@@ -49,17 +49,19 @@ class MessageTracker:
             await cur.execute(
                 """
                 INSERT INTO messages (
-                    direction, partner_name, content_digest, transaction_set, input_format,
-                    status, error_code, receipt_verified, trans_id, refnum, refnum_orig,
-                    sinks_status, raw_headers, received_at, sent_at,
+                    direction, partner_name, content_digest, from_id, to_id, transaction_set,
+                    input_format, status, error_code, receipt_verified, trans_id, refnum,
+                    refnum_orig, sinks_status, raw_headers, received_at, sent_at,
                     receipt_sent_at, receipt_received_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 """,
                 (
                     record.direction,
                     record.partner_name,
                     record.content_digest,
+                    record.from_id,
+                    record.to_id,
                     record.transaction_set,
                     record.input_format,
                     record.status,

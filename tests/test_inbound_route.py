@@ -263,6 +263,9 @@ def test_happy_path_accepted(settings, partners, gpg_service, fingerprints, trac
     assert len(recording_sink.received) == 1
     assert recording_sink.received[0].plaintext == b"ISA*00*..."
     assert any(r.status == "accepted" for r in tracker.records.values())
+    (record,) = tracker.records.values()
+    assert record.from_id == PARTNER_DUNS
+    assert record.to_id == OUR_DUNS
 
 
 def test_missing_authorization_returns_plain_401(settings, partners, gpg_service, fingerprints, tracker, recording_sink, us_key, partner_key):

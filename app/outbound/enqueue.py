@@ -47,6 +47,8 @@ async def enqueue_outbound(
             direction="outbound",
             partner_name=partner.name,
             content_digest=content_digest,
+            from_id=settings.identity.duns,
+            to_id=partner.duns,
             transaction_set=transaction_set,
             input_format=input_format.value,
             refnum=refnum,

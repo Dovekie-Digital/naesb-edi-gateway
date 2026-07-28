@@ -126,6 +126,23 @@ async def test_create_rejects_duplicate_refnum_same_partner_and_direction(tracke
         await tracker.create(second)
 
 
+async def test_create_persists_from_and_to_id(tracker, pool):
+    record = MessageRecord(
+        direction="inbound",
+        partner_name="acme-pipeline",
+        content_digest="i" * 64,
+        from_id="123456789",
+        to_id="987654321",
+        status="processing",
+    )
+    message_id = await tracker.create(record)
+
+    async with pool.connection() as conn, conn.cursor() as cur:
+        await cur.execute("SELECT from_id, to_id FROM messages WHERE id=%s", (message_id,))
+        row = await cur.fetchone()
+    assert row == ("123456789", "987654321")
+
+
 async def test_outbound_job_create_claim_and_deliver(job_repository):
     job = OutboundJob(
         id=None,

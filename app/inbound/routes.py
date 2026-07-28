@@ -153,6 +153,8 @@ async def receive(
         direction="inbound",
         partner_name=partner.name,
         content_digest=content_digest,
+        from_id=fields.from_id,
+        to_id=fields.to_id,
         transaction_set=fields.transaction_set,
         input_format=fields.input_format.value,
         trans_id=trans_id,
