@@ -3,9 +3,12 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import structlog
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+from fastapi.responses import JSONResponse
 
-from app.api import health, partners as partners_api, send
+from app.api import health, messages as messages_api, partners as partners_api, send
+from app.api.partners import require_internal_auth
 from app.crypto.gpg_wrapper import GpgService
 from app.crypto.keyring import bootstrap_keyring
 from app.errors import register_exception_handlers
@@ -99,13 +102,43 @@ async def lifespan(app: FastAPI):
     await pool.close()
 
 
+def register_protected_docs(app: FastAPI) -> None:
+    """Re-serves the OpenAPI spec, Swagger UI, and ReDoc behind
+    require_internal_auth. The app itself must be constructed with
+    docs_url=None, redoc_url=None, openapi_url=None -- by default FastAPI
+    serves these unauthenticated, which would let anyone unauthenticated
+    browse this gateway's internal API surface (request/response schemas
+    for /outbound/send, /api/messages, etc)."""
+
+    @app.get("/openapi.json", include_in_schema=False)
+    async def openapi_spec(_: None = Depends(require_internal_auth)) -> JSONResponse:
+        return JSONResponse(app.openapi())
+
+    @app.get("/docs", include_in_schema=False)
+    async def swagger_ui(_: None = Depends(require_internal_auth)):
+        return get_swagger_ui_html(openapi_url="/openapi.json", title=f"{app.title} - Swagger UI")
+
+    @app.get("/redoc", include_in_schema=False)
+    async def redoc_ui(_: None = Depends(require_internal_auth)):
+        return get_redoc_html(openapi_url="/openapi.json", title=f"{app.title} - ReDoc")
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="naesb-edi-gateway", lifespan=lifespan)
+    app = FastAPI(
+        title="naesb-edi-gateway",
+        description="NAESB WGQ 4.0 Internet ET (PGP-over-HTTP) EDI gateway -- internal API surface.",
+        lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+    )
     register_exception_handlers(app)
     app.include_router(health.router)
     app.include_router(send.router)
+    app.include_router(messages_api.router)
     app.include_router(partners_api.router)
     app.include_router(inbound_routes.router, prefix=settings.server.inbound_path)
+    register_protected_docs(app)
     return app
 
 

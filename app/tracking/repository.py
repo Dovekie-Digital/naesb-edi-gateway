@@ -1,11 +1,43 @@
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 from psycopg.types.json import Json
 from psycopg_pool import AsyncConnectionPool
 
-from app.tracking.models import MessageRecord, OutboundJob
+from app.tracking.models import MessageRecord, MessageSummary, OutboundJob
+
+# Statuses the inbound accept/reject pipeline (app/inbound/routes.py) owns
+# outright -- a downstream caller marking a message "processed" must never be
+# able to set one of these via the bulk status-update API.
+RESERVED_STATUSES = frozenset({"processing", "accepted", "rejected"})
+
+
+@dataclass
+class MarkProcessedResult:
+    updated: list[uuid.UUID]
+    skipped: list[uuid.UUID]
+
+
+_SUMMARY_COLUMNS = (
+    "id, direction, partner_name, status, content_digest, transaction_set, "
+    "trans_id, received_at, processed_at"
+)
+
+
+def _row_to_summary(row: tuple) -> MessageSummary:
+    return MessageSummary(
+        id=row[0],
+        direction=row[1],
+        partner_name=row[2],
+        status=row[3],
+        content_digest=row[4],
+        transaction_set=row[5],
+        trans_id=row[6],
+        received_at=row[7],
+        processed_at=row[8],
+    )
 
 
 class MessageTracker:
@@ -117,6 +149,73 @@ class MessageTracker:
                 "UPDATE messages SET sinks_status=%s, updated_at=now() WHERE id=%s",
                 (Json(sinks_status), message_id),
             )
+
+    async def list_by_status(
+        self,
+        status: str,
+        *,
+        direction: str = "inbound",
+        partner_name: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[MessageSummary]:
+        """Downstream-facing read used by the messages-listing API
+        (app/api/messages.py) so an external consumer can discover which
+        messages it still needs to process."""
+        async with self.pool.connection() as conn, conn.cursor() as cur:
+            await cur.execute(
+                f"""
+                SELECT {_SUMMARY_COLUMNS}
+                FROM messages
+                WHERE direction=%s AND status=%s
+                  AND (%s::text IS NULL OR partner_name=%s)
+                ORDER BY created_at
+                LIMIT %s OFFSET %s
+                """,
+                (direction, status, partner_name, partner_name, limit, offset),
+            )
+            rows = await cur.fetchall()
+            return [_row_to_summary(row) for row in rows]
+
+    async def get_by_id(self, message_id: uuid.UUID) -> MessageSummary | None:
+        """Downstream-facing single-message lookup used by
+        `GET /api/messages/{id}` (app/api/messages.py) -- e.g. to check on a
+        specific message a consumer already has an id for, rather than
+        paging through list_by_status()."""
+        async with self.pool.connection() as conn, conn.cursor() as cur:
+            await cur.execute(
+                f"SELECT {_SUMMARY_COLUMNS} FROM messages WHERE id=%s",
+                (message_id,),
+            )
+            row = await cur.fetchone()
+            return _row_to_summary(row) if row else None
+
+    async def mark_processed(
+        self, message_ids: list[uuid.UUID], *, status: str = "processed"
+    ) -> MarkProcessedResult:
+        """Bulk-transition messages from 'accepted' to a downstream-owned
+        terminal status (default 'processed'). Only rows currently
+        'accepted' are eligible -- anything else (unknown id, already
+        processed, still processing/rejected) comes back as skipped rather
+        than raising, so a caller can report partial success across a batch.
+        `status` must not collide with a gateway-owned value; that's
+        enforced by the API layer (app/api/messages.py), not here."""
+        if not message_ids:
+            return MarkProcessedResult(updated=[], skipped=[])
+        async with self.pool.connection() as conn, conn.cursor() as cur:
+            await cur.execute(
+                """
+                UPDATE messages SET status=%s, processed_at=now(), updated_at=now()
+                WHERE id = ANY(%s) AND status = 'accepted'
+                RETURNING id
+                """,
+                (status, message_ids),
+            )
+            updated_rows = await cur.fetchall()
+            updated = [row[0] for row in updated_rows]
+            updated_set = set(updated)
+            skipped = [mid for mid in message_ids if mid not in updated_set]
+            return MarkProcessedResult(updated=updated, skipped=skipped)
 
 
 _JOB_COLUMNS = (

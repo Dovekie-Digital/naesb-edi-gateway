@@ -200,7 +200,30 @@ python -m app.poller &
   `endpoint_url`, `has_envelope_overrides`); never returns auth credentials
   or key paths. Protected by HTTP Basic auth against
   `internal_api.username_env`/`password_env` in `config.yaml`.
+- `GET /api/messages?status=...` -- lists messages by status (optionally
+  filtered by `partner_name`), for a downstream consumer to discover what's
+  outstanding (e.g. `?status=accepted`). Deliberately kept under `/api`
+  rather than `{server.inbound_path}` so it's never reachable by an
+  external trading partner.
+- `GET /api/messages/{id}` -- fetches a single message by id (404 if
+  unknown), for a consumer that already has one and wants its current
+  status without paging through the list endpoint above.
+- `POST /api/messages/status` -- bulk-transitions messages currently
+  `accepted` into a downstream-owned terminal status (`processed` by
+  default), once a downstream system has consumed the delivered content.
+  Body: `{"message_ids": [...], "status": "processed"}`. Ids that aren't
+  currently `accepted` come back in the response's `skipped` list rather
+  than failing the whole call. See `docs/inbound-flow.md`'s "What happens
+  after acceptance" section for how a sink's delivered file/object/payload
+  is correlated back to a message id.
 - `GET /healthz`, `GET /readyz`.
+- `GET /docs` (Swagger UI), `GET /redoc` (ReDoc), `GET /openapi.json` --
+  browsable API reference for every endpoint above (except the
+  partner-facing `{server.inbound_path}`, which takes a raw NAESB envelope
+  body rather than a typed schema). Protected by the same internal Basic
+  auth as `/api/partners` and `/outbound/send` -- FastAPI's default
+  unauthenticated `/docs`/`/redoc`/`/openapi.json` are disabled in favor of
+  these.
 
 ## Testing
 

@@ -1,6 +1,23 @@
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
+
+
+@dataclass
+class MessageSummary:
+    """Read-model returned by `MessageTracker.list_by_status` -- a downstream
+    consumer's view of a message row, not the full audit record."""
+
+    id: uuid.UUID
+    direction: str
+    partner_name: str
+    status: str
+    content_digest: str
+    transaction_set: str | None
+    trans_id: int | None
+    received_at: datetime | None
+    processed_at: datetime | None
 
 
 @dataclass

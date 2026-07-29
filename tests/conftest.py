@@ -1,6 +1,16 @@
+import os
 import shutil
 import subprocess
 import tempfile
+
+# app.main reads NAESB_CONFIG_PATH at *import* time (module-level
+# load_settings() call) -- default config/config.yaml is a gitignored local
+# dev file that may not exist (or may be incomplete) in CI/a fresh checkout.
+# config.example.yaml is the committed, schema-complete reference config;
+# set this before anything imports app.main (directly or transitively) so
+# that import doesn't fail here regardless of local dev setup. setdefault
+# so a developer's own NAESB_CONFIG_PATH still wins if already set.
+os.environ.setdefault("NAESB_CONFIG_PATH", "config/config.example.yaml")
 
 import gnupg
 import pytest

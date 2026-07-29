@@ -16,6 +16,7 @@ class WebhookSink:
 
     async def deliver(self, message: InboundMessage) -> SinkResult:
         payload = {
+            "message_id": str(message.message_id),
             "partner": message.partner_name,
             "content_digest": message.content_digest,
             "transaction_set": message.envelope.transaction_set,

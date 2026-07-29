@@ -21,7 +21,7 @@ from app.partners import PartnerRegistry
 from app.settings import Settings
 from app.tracking.repository import MessageTracker, OutboundJobRepository
 
-router = APIRouter()
+router = APIRouter(tags=["outbound"])
 
 
 class SendRequest(BaseModel):
