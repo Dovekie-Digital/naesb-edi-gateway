@@ -21,8 +21,8 @@ class MarkProcessedResult:
 
 
 _SUMMARY_COLUMNS = (
-    "id, direction, partner_name, status, content_digest, transaction_set, "
-    "trans_id, received_at, processed_at"
+    "id, direction, partner_name, status, content_digest, from_id, to_id, "
+    "transaction_set, trans_id, received_at, processed_at"
 )
 
 
@@ -33,10 +33,12 @@ def _row_to_summary(row: tuple) -> MessageSummary:
         partner_name=row[2],
         status=row[3],
         content_digest=row[4],
-        transaction_set=row[5],
-        trans_id=row[6],
-        received_at=row[7],
-        processed_at=row[8],
+        from_id=row[5],
+        to_id=row[6],
+        transaction_set=row[7],
+        trans_id=row[8],
+        received_at=row[9],
+        processed_at=row[10],
     )
 
 

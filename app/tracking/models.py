@@ -14,6 +14,8 @@ class MessageSummary:
     partner_name: str
     status: str
     content_digest: str
+    from_id: str | None
+    to_id: str | None
     transaction_set: str | None
     trans_id: int | None
     received_at: datetime | None

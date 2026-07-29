@@ -97,6 +97,8 @@ def test_list_messages_returns_summaries(settings, tracker):
             partner_name="acme-pipeline",
             status="accepted",
             content_digest="a" * 64,
+            from_id="987654321",
+            to_id="123456789",
             transaction_set="NOM00001",
             trans_id=1,
             received_at=datetime(2026, 7, 8, 19, 30, 0, tzinfo=UTC),
@@ -116,6 +118,8 @@ def test_list_messages_returns_summaries(settings, tracker):
     assert len(body) == 1
     assert body[0]["id"] == str(message_id)
     assert body[0]["status"] == "accepted"
+    assert body[0]["from_id"] == "987654321"
+    assert body[0]["to_id"] == "123456789"
     assert tracker.list_calls == [
         dict(status="accepted", direction="inbound", partner_name="acme-pipeline", limit=100, offset=0)
     ]
@@ -193,6 +197,8 @@ def test_get_message_returns_summary_when_found(settings, tracker):
         partner_name="acme-pipeline",
         status="accepted",
         content_digest="a" * 64,
+        from_id="987654321",
+        to_id="123456789",
         transaction_set="NOM00001",
         trans_id=1,
         received_at=datetime(2026, 7, 8, 19, 30, 0, tzinfo=UTC),
@@ -209,3 +215,5 @@ def test_get_message_returns_summary_when_found(settings, tracker):
     assert body["id"] == str(message_id)
     assert body["status"] == "accepted"
     assert body["partner_name"] == "acme-pipeline"
+    assert body["from_id"] == "987654321"
+    assert body["to_id"] == "123456789"

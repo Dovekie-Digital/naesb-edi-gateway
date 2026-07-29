@@ -150,7 +150,12 @@ async def test_list_by_status_filters_direction_status_and_partner(tracker):
     # which shares a single module-scoped Postgres container) so this
     # assertion isn't polluted by rows left behind by other tests.
     accepted = MessageRecord(
-        direction="inbound", partner_name="list-status-partner-a", content_digest="j" * 64, status="accepted"
+        direction="inbound",
+        partner_name="list-status-partner-a",
+        content_digest="j" * 64,
+        status="accepted",
+        from_id="987654321",
+        to_id="123456789",
     )
     other_partner = MessageRecord(
         direction="inbound", partner_name="list-status-partner-b", content_digest="k" * 64, status="accepted"
@@ -165,11 +170,18 @@ async def test_list_by_status_filters_direction_status_and_partner(tracker):
     results = await tracker.list_by_status("accepted", partner_name="list-status-partner-a")
     assert [r.id for r in results] == [accepted_id]
     assert results[0].status == "accepted"
+    assert results[0].from_id == "987654321"
+    assert results[0].to_id == "123456789"
 
 
 async def test_get_by_id_returns_message_or_none(tracker):
     record = MessageRecord(
-        direction="inbound", partner_name="get-by-id-partner", content_digest="p" * 64, status="accepted"
+        direction="inbound",
+        partner_name="get-by-id-partner",
+        content_digest="p" * 64,
+        status="accepted",
+        from_id="987654321",
+        to_id="123456789",
     )
     message_id = await tracker.create(record)
 
@@ -178,6 +190,8 @@ async def test_get_by_id_returns_message_or_none(tracker):
     assert found.id == message_id
     assert found.partner_name == "get-by-id-partner"
     assert found.status == "accepted"
+    assert found.from_id == "987654321"
+    assert found.to_id == "123456789"
 
     assert await tracker.get_by_id(uuid.uuid4()) is None
 

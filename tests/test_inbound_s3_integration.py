@@ -257,7 +257,10 @@ async def test_inbound_message_lands_in_s3_and_is_markable_processed(
         headers=_basic_auth_header("admin", "s3cr3t"),
     )
     assert list_response.status_code == 200
-    assert [m["id"] for m in list_response.json()] == [str(message_id)]
+    listed = list_response.json()
+    assert [m["id"] for m in listed] == [str(message_id)]
+    assert listed[0]["from_id"] == PARTNER_DUNS
+    assert listed[0]["to_id"] == OUR_DUNS
 
     # ...or, having already extracted the id from the S3 key, fetches it
     # directly by id instead of paging through the list endpoint.
@@ -265,7 +268,10 @@ async def test_inbound_message_lands_in_s3_and_is_markable_processed(
         f"/api/messages/{message_id}", headers=_basic_auth_header("admin", "s3cr3t")
     )
     assert get_response.status_code == 200
-    assert get_response.json()["id"] == str(message_id)
+    fetched = get_response.json()
+    assert fetched["id"] == str(message_id)
+    assert fetched["from_id"] == PARTNER_DUNS
+    assert fetched["to_id"] == OUR_DUNS
 
     # ...consumes the S3 object (already verified above)...
 

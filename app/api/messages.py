@@ -18,6 +18,8 @@ class MessageSummaryResponse(BaseModel):
     partner_name: str
     status: str
     content_digest: str
+    from_id: str | None = None
+    to_id: str | None = None
     transaction_set: str | None = None
     trans_id: int | None = None
     received_at: datetime | None = None
@@ -41,6 +43,8 @@ def _to_response(summary: MessageSummary) -> MessageSummaryResponse:
         partner_name=summary.partner_name,
         status=summary.status,
         content_digest=summary.content_digest,
+        from_id=summary.from_id,
+        to_id=summary.to_id,
         transaction_set=summary.transaction_set,
         trans_id=summary.trans_id,
         received_at=summary.received_at,
