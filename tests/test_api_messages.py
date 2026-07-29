@@ -18,6 +18,7 @@ class FakeTracker:
         self.list_calls = []
         self.mark_processed_calls = []
         self.summaries: list[MessageSummary] = []
+        self.by_id: dict[uuid.UUID, MessageSummary] = {}
         self.mark_processed_result = MarkProcessedResult(updated=[], skipped=[])
 
     async def list_by_status(self, status, *, direction="inbound", partner_name=None, limit=100, offset=0):
@@ -25,6 +26,9 @@ class FakeTracker:
             dict(status=status, direction=direction, partner_name=partner_name, limit=limit, offset=offset)
         )
         return self.summaries
+
+    async def get_by_id(self, message_id):
+        return self.by_id.get(message_id)
 
     async def mark_processed(self, message_ids, *, status="processed"):
         self.mark_processed_calls.append(dict(message_ids=message_ids, status=status))
@@ -156,3 +160,52 @@ def test_update_message_status_rejects_reserved_status(settings, tracker):
 
     assert response.status_code == 400
     assert not tracker.mark_processed_calls
+
+
+def test_get_message_requires_auth(settings, tracker):
+    client = build_client(settings, tracker)
+    response = client.get(f"/api/messages/{uuid.uuid4()}")
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Basic"
+
+
+def test_get_message_rejects_wrong_credentials(settings, tracker):
+    client = build_client(settings, tracker)
+    response = client.get(
+        f"/api/messages/{uuid.uuid4()}", headers=_basic_auth_header("admin", "wrong")
+    )
+    assert response.status_code == 401
+
+
+def test_get_message_returns_404_when_unknown(settings, tracker):
+    client = build_client(settings, tracker)
+    response = client.get(
+        f"/api/messages/{uuid.uuid4()}", headers=_basic_auth_header("admin", "s3cr3t")
+    )
+    assert response.status_code == 404
+
+
+def test_get_message_returns_summary_when_found(settings, tracker):
+    message_id = uuid.uuid4()
+    tracker.by_id[message_id] = MessageSummary(
+        id=message_id,
+        direction="inbound",
+        partner_name="acme-pipeline",
+        status="accepted",
+        content_digest="a" * 64,
+        transaction_set="NOM00001",
+        trans_id=1,
+        received_at=datetime(2026, 7, 8, 19, 30, 0, tzinfo=UTC),
+        processed_at=None,
+    )
+    client = build_client(settings, tracker)
+
+    response = client.get(
+        f"/api/messages/{message_id}", headers=_basic_auth_header("admin", "s3cr3t")
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == str(message_id)
+    assert body["status"] == "accepted"
+    assert body["partner_name"] == "acme-pipeline"

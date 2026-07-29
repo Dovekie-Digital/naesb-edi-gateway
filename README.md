@@ -205,6 +205,9 @@ python -m app.poller &
   outstanding (e.g. `?status=accepted`). Deliberately kept under `/api`
   rather than `{server.inbound_path}` so it's never reachable by an
   external trading partner.
+- `GET /api/messages/{id}` -- fetches a single message by id (404 if
+  unknown), for a consumer that already has one and wants its current
+  status without paging through the list endpoint above.
 - `POST /api/messages/status` -- bulk-transitions messages currently
   `accepted` into a downstream-owned terminal status (`processed` by
   default), once a downstream system has consumed the delivered content.

@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from testcontainers.postgres import PostgresContainer
 
@@ -163,6 +165,21 @@ async def test_list_by_status_filters_direction_status_and_partner(tracker):
     results = await tracker.list_by_status("accepted", partner_name="list-status-partner-a")
     assert [r.id for r in results] == [accepted_id]
     assert results[0].status == "accepted"
+
+
+async def test_get_by_id_returns_message_or_none(tracker):
+    record = MessageRecord(
+        direction="inbound", partner_name="get-by-id-partner", content_digest="p" * 64, status="accepted"
+    )
+    message_id = await tracker.create(record)
+
+    found = await tracker.get_by_id(message_id)
+    assert found is not None
+    assert found.id == message_id
+    assert found.partner_name == "get-by-id-partner"
+    assert found.status == "accepted"
+
+    assert await tracker.get_by_id(uuid.uuid4()) is None
 
 
 async def test_mark_processed_transitions_accepted_only(tracker):

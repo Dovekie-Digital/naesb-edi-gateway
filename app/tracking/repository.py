@@ -20,6 +20,26 @@ class MarkProcessedResult:
     skipped: list[uuid.UUID]
 
 
+_SUMMARY_COLUMNS = (
+    "id, direction, partner_name, status, content_digest, transaction_set, "
+    "trans_id, received_at, processed_at"
+)
+
+
+def _row_to_summary(row: tuple) -> MessageSummary:
+    return MessageSummary(
+        id=row[0],
+        direction=row[1],
+        partner_name=row[2],
+        status=row[3],
+        content_digest=row[4],
+        transaction_set=row[5],
+        trans_id=row[6],
+        received_at=row[7],
+        processed_at=row[8],
+    )
+
+
 class MessageTracker:
     """Cross-cutting audit trail over the whole message lifecycle -- not a
     Sink. Updated at every pipeline checkpoint, including failures that never
@@ -144,9 +164,8 @@ class MessageTracker:
         messages it still needs to process."""
         async with self.pool.connection() as conn, conn.cursor() as cur:
             await cur.execute(
-                """
-                SELECT id, direction, partner_name, status, content_digest,
-                       transaction_set, trans_id, received_at, processed_at
+                f"""
+                SELECT {_SUMMARY_COLUMNS}
                 FROM messages
                 WHERE direction=%s AND status=%s
                   AND (%s::text IS NULL OR partner_name=%s)
@@ -156,20 +175,20 @@ class MessageTracker:
                 (direction, status, partner_name, partner_name, limit, offset),
             )
             rows = await cur.fetchall()
-            return [
-                MessageSummary(
-                    id=row[0],
-                    direction=row[1],
-                    partner_name=row[2],
-                    status=row[3],
-                    content_digest=row[4],
-                    transaction_set=row[5],
-                    trans_id=row[6],
-                    received_at=row[7],
-                    processed_at=row[8],
-                )
-                for row in rows
-            ]
+            return [_row_to_summary(row) for row in rows]
+
+    async def get_by_id(self, message_id: uuid.UUID) -> MessageSummary | None:
+        """Downstream-facing single-message lookup used by
+        `GET /api/messages/{id}` (app/api/messages.py) -- e.g. to check on a
+        specific message a consumer already has an id for, rather than
+        paging through list_by_status()."""
+        async with self.pool.connection() as conn, conn.cursor() as cur:
+            await cur.execute(
+                f"SELECT {_SUMMARY_COLUMNS} FROM messages WHERE id=%s",
+                (message_id,),
+            )
+            row = await cur.fetchone()
+            return _row_to_summary(row) if row else None
 
     async def mark_processed(
         self, message_ids: list[uuid.UUID], *, status: str = "processed"

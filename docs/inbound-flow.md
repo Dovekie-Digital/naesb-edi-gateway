@@ -235,13 +235,17 @@ detected duplicate.
   `message_id` field in the webhook JSON payload. A downstream consumer uses
   that id to report back once it has consumed the file.
 - **Marking a message processed**: once a downstream system has consumed a
-  delivered message, it can record that fact via two internal, Basic-auth
+  delivered message, it can record that fact via three internal, Basic-auth
   endpoints under `/api` (same credentials and path family as
   `/api/partners`; deliberately kept off the partner-facing
-  `{server.inbound_path}` prefix so it can never be reached by an external
+  `{server.inbound_path}` prefix so they can never be reached by an external
   trading partner):
   - `GET /api/messages?status=accepted` — list messages by status
     (optionally filtered by `partner_name`), to discover what's outstanding.
+  - `GET /api/messages/{id}` — fetch a single message by id (404 if
+    unknown), for a consumer that already has one (e.g. extracted from a
+    sink filename/object key/webhook payload) and wants that message's
+    current status without paging through the list endpoint.
   - `POST /api/messages/status` with `{"message_ids": [...], "status":
     "processed"}` — bulk-transitions messages currently `accepted` into a
     downstream-owned terminal status (`processed` by default; any status

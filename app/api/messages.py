@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from app.api.partners import require_internal_auth
 from app.dependencies import get_tracker
+from app.tracking.models import MessageSummary
 from app.tracking.repository import RESERVED_STATUSES, MessageTracker
 
 router = APIRouter(prefix="/api", tags=["messages"])
@@ -33,6 +34,20 @@ class UpdateStatusResponse(BaseModel):
     skipped: list[uuid.UUID]
 
 
+def _to_response(summary: MessageSummary) -> MessageSummaryResponse:
+    return MessageSummaryResponse(
+        id=summary.id,
+        direction=summary.direction,
+        partner_name=summary.partner_name,
+        status=summary.status,
+        content_digest=summary.content_digest,
+        transaction_set=summary.transaction_set,
+        trans_id=summary.trans_id,
+        received_at=summary.received_at,
+        processed_at=summary.processed_at,
+    )
+
+
 @router.get("/messages", response_model=list[MessageSummaryResponse])
 async def list_messages(
     status: str,
@@ -47,20 +62,23 @@ async def list_messages(
     summaries = await tracker.list_by_status(
         status, partner_name=partner_name, limit=limit, offset=offset
     )
-    return [
-        MessageSummaryResponse(
-            id=s.id,
-            direction=s.direction,
-            partner_name=s.partner_name,
-            status=s.status,
-            content_digest=s.content_digest,
-            transaction_set=s.transaction_set,
-            trans_id=s.trans_id,
-            received_at=s.received_at,
-            processed_at=s.processed_at,
-        )
-        for s in summaries
-    ]
+    return [_to_response(s) for s in summaries]
+
+
+@router.get("/messages/{message_id}", response_model=MessageSummaryResponse)
+async def get_message(
+    message_id: uuid.UUID,
+    _: None = Depends(require_internal_auth),
+    tracker: MessageTracker = Depends(get_tracker),
+) -> MessageSummaryResponse:
+    """Fetches a single message by id -- e.g. for a downstream consumer that
+    already has an id (from a sink payload/filename/object key) and wants
+    that message's current status rather than paging through the list
+    endpoint."""
+    summary = await tracker.get_by_id(message_id)
+    if summary is None:
+        raise HTTPException(status_code=404, detail="unknown message")
+    return _to_response(summary)
 
 
 @router.post("/messages/status", response_model=UpdateStatusResponse)

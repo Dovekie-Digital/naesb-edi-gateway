@@ -259,6 +259,14 @@ async def test_inbound_message_lands_in_s3_and_is_markable_processed(
     assert list_response.status_code == 200
     assert [m["id"] for m in list_response.json()] == [str(message_id)]
 
+    # ...or, having already extracted the id from the S3 key, fetches it
+    # directly by id instead of paging through the list endpoint.
+    get_response = client.get(
+        f"/api/messages/{message_id}", headers=_basic_auth_header("admin", "s3cr3t")
+    )
+    assert get_response.status_code == 200
+    assert get_response.json()["id"] == str(message_id)
+
     # ...consumes the S3 object (already verified above)...
 
     # ...and marks it processed via the update API.
