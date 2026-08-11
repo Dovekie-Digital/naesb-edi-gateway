@@ -169,7 +169,9 @@ detected duplicate.
 2. Filesystem and S3 sinks are `durable: true` by default; webhook is
    best-effort/non-durable. Both durable sinks use the same path
    convention, keyed by the *sender's* DUNS:
-   `{base_dir|prefix}/{partner_duns}/{timestamp}_{digest[:16]}_{transaction_set}.edi`.
+   `{base_dir|prefix}/{partner_duns}/{message_id}.edi`, where `message_id`
+   is the `messages.id` UUID assigned when the transmission was tracked
+   (see "Correlating a delivered file back to its row" below).
 3. **`settings.sinks.require_at_least_one_durable_success`** gates
    acceptance: if *zero* durable sinks succeeded, the transmission is
    rejected with `GWX-SINK-FAILURE` even though decryption already
@@ -229,11 +231,11 @@ detected duplicate.
   X12 nominations) to pick up and act on. Reading, parsing, and acting on
   the X12 *content* itself is explicitly outside this gateway's scope —
   its job ends at "delivered somewhere durable, with proof."
-- **Correlating a delivered file back to its row**: each sink names/tags the
-  delivered content with the message's `messages.id` (UUID) — it's the
-  filename/object-key component for the filesystem and S3 sinks, and the
-  `message_id` field in the webhook JSON payload. A downstream consumer uses
-  that id to report back once it has consumed the file.
+- **Correlating a delivered file back to its row**: each sink tags the
+  delivered content with the message's `messages.id` (UUID) — it *is* the
+  entire filename/object-key (`{message_id}.edi`) for the filesystem and S3
+  sinks, and the `message_id` field in the webhook JSON payload. A downstream
+  consumer uses that id to report back once it has consumed the file.
 - **Marking a message processed**: once a downstream system has consumed a
   delivered message, it can record that fact via three internal, Basic-auth
   endpoints under `/api` (same credentials and path family as

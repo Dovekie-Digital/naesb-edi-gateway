@@ -57,13 +57,14 @@ def test_s3_sink_puts_object(s3_bucket):
     client = boto3.client("s3", region_name="us-east-1")
     listing = client.list_objects_v2(Bucket=s3_bucket, Prefix="inbound/987654321/")
     assert listing["KeyCount"] == 1
+    assert listing["Contents"][0]["Key"] == "inbound/987654321/11111111-1111-1111-1111-111111111111.edi"
     body = client.get_object(Bucket=s3_bucket, Key=listing["Contents"][0]["Key"])["Body"].read()
     assert body == b"ISA*00*..."
 
 
-def test_s3_sink_key_omits_none_when_transaction_set_absent(s3_bucket):
-    # transaction-set is optional/mutually-agreed -- a missing value must not
-    # literally f-string-interpolate to the text "None" in the object key.
+def test_s3_sink_key_unaffected_by_missing_transaction_set(s3_bucket):
+    # transaction-set is optional/mutually-agreed and no longer part of the
+    # object key at all -- a missing value must not change the key shape.
     sink = S3Sink(
         bucket=s3_bucket,
         prefix="inbound/",
@@ -87,8 +88,7 @@ def test_s3_sink_key_omits_none_when_transaction_set_absent(s3_bucket):
     listing = client.list_objects_v2(Bucket=s3_bucket, Prefix="inbound/987654321/")
     assert listing["KeyCount"] == 1
     key = listing["Contents"][0]["Key"]
-    assert "None" not in key
-    assert key.endswith("_unspecified.edi")
+    assert key == "inbound/987654321/11111111-1111-1111-1111-111111111111.edi"
 
 
 def test_s3_sink_reports_failure_for_missing_bucket():
