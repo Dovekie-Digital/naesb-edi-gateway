@@ -10,20 +10,13 @@ trading partner supplies the other with their PGP public key. This project
 No UI -- purely an HTTP/API service, intended to sit between internal
 systems and external NAESB trading partners (interstate pipeline operators).
 
-**Spec provenance note (revised):** an earlier version of this plan was
-built against `docs/naesb4.md`, a document that turned out to be
-**fabricated** -- it invented a wire format (raw `application/octet-stream`
-body, custom lowercase HTTP headers), a receipt format (line-delimited
-`receipt-status: ...` text), and a numeric `101/102/103` error-code scheme,
-none of which exist in the real standard. The user subsequently supplied
-the official **NAESB WGQ Cybersecurity Related Standards Manual, Version
-4.0** (Sept 29, 2023; `docs/NAESB-cyber0923-2026-0709.pdf`), and this plan
-was rewritten against that real text. `docs/naesb4.md` is quarantined (see
-the warning banner at its top) and kept only for historical reference. Two
-things the real manual leaves genuinely open, confirmed with the project
-owner rather than guessed: the exact `version` protocol-version default
-(no safe default -- required config, per-TPA) and the `transaction-set`
-8-character code table (treated as an opaque, length-validated string).
+**Spec provenance note:** this plan is built directly against the official
+**NAESB WGQ Cybersecurity Related Standards Manual, Version 4.0** (Sept 29,
+2023; `docs/NAESB-cyber0923-2026-0709.pdf`). Two things the real manual
+leaves genuinely open, confirmed with the project owner rather than
+guessed: the exact `version` protocol-version default (no safe default --
+required config, per-TPA) and the `transaction-set` 8-character code table
+(treated as an opaque, length-validated string).
 
 ## Architecture Overview
 
@@ -130,9 +123,9 @@ naesb-edi-gateway/
 | Key strength | RSA only; reject/refuse to load any key (ours or a partner's) under 2048 bits at startup; 4096-bit recommended. | A real NAESB requirement (Appendix A), enforced in `keyring.py` via `gpg.list_keys()`. |
 | Inbound decrypt-policy accept-list | `crypto.allowed_ciphers`/`crypto.allowed_digests` (lists, default `[AES256, AES192, AES128]`/`[SHA256, SHA384, SHA512, SHA1]`) -- separate from `cipher_algo`/`digest_algo` above, which are only what *we* use outbound. Checked in `enforce_policy()` (inbound decrypt) and `enforce_digest_policy()` (verifying a partner's returned receipt signature, `outbound/client.py`). Per-partner `crypto_overrides.allowed_ciphers`/`allowed_digests` (`partners.yaml`, `app/partners.py::CryptoOverrides`) replaces the global list for that partner only. | Broadened past our own outbound default because real partners' PGP libraries are often older than what we'd choose ourselves -- confirmed against real captures (`samples/request-ssc-*.txt`), whose sender requests `sha1` receipt signatures. NAESB itself sets no cipher/digest mandate (12.3.26), so this remains a local policy knob, not a spec requirement. |
 | TLS | Outbound `httpx` client pinned to TLS 1.2 minimum; inbound TLS termination stays at a reverse proxy. | Matches standards 12.3.14/12.3.23/Appendix A. |
-| Receipt | `Content-Type: multipart/signed` (detached PGP signature, `application/pgp-signature`) wrapping `multipart/report; report-type="gisb-acknowledgement-receipt"`, whose sub-parts contain `key=value*`-delimited lines (`time-c`, `request-status`, `server-id`, `trans-id`) in that required order. `time-c` is `yyyymmddhhmmss`, captured immediately on last byte received (standard 12.3.5), before auth/parsing/decryption. `trans-id` is a DB-sequence-backed monotonic integer. | Matches "Receiving Internet ET Packages" / "Acknowledgement Receipt" exactly -- supersedes the earlier fabricated line-delimited JSON-like design. |
-| Error codes | Real `EEDM###`/`WEDM###` codes (`error_codes.py::NaesbErrorCode`) for spec-documented failure modes (missing/invalid fields, decryption failures 601-604/699, unknown partner 701, duplicate refnum 121, ...). Gateway-only extensions (`GatewayExtensionCode`, `GWX-...` prefix) for guarantees the spec doesn't cover (content-digest dedup, local weak-algorithm policy, sink delivery failure) -- explicitly namespaced so they can never collide with a real code. | The spec's own Table 1 is authoritative and far more specific than the earlier fabricated 3-code scheme; extensions are clearly marked as non-NAESB. |
-| Authentication | HTTP Basic Authentication over TLS is the spec-compliant default (`type: basic`, standards 12.3.14/12.3.28/12.3.29). `type: api_key` (Bearer) is a clearly-labeled gateway-only convenience extension. | Matches the standard directly, rather than treating both as equally-spec-defined (neither was, previously). |
+| Receipt | `Content-Type: multipart/signed` (detached PGP signature, `application/pgp-signature`) wrapping `multipart/report; report-type="gisb-acknowledgement-receipt"`, whose sub-parts contain `key=value*`-delimited lines (`time-c`, `request-status`, `server-id`, `trans-id`) in that required order. `time-c` is `yyyymmddhhmmss`, captured immediately on last byte received (standard 12.3.5), before auth/parsing/decryption. `trans-id` is a DB-sequence-backed monotonic integer. | Matches "Receiving Internet ET Packages" / "Acknowledgement Receipt" exactly. |
+| Error codes | Real `EEDM###`/`WEDM###` codes (`error_codes.py::NaesbErrorCode`) for spec-documented failure modes (missing/invalid fields, decryption failures 601-604/699, unknown partner 701, duplicate refnum 121, ...). Gateway-only extensions (`GatewayExtensionCode`, `GWX-...` prefix) for guarantees the spec doesn't cover (content-digest dedup, local weak-algorithm policy, sink delivery failure) -- explicitly namespaced so they can never collide with a real code. | The spec's own Table 1 is authoritative; extensions are clearly marked as non-NAESB. |
+| Authentication | HTTP Basic Authentication over TLS is the spec-compliant default (`type: basic`, standards 12.3.14/12.3.28/12.3.29). `type: api_key` (Bearer) is a clearly-labeled gateway-only convenience extension. | Matches the standard directly; the two auth types are not equally spec-defined. |
 | Dedup / idempotency key | Primarily `(partner, refnum)` when a partner is configured `use_refnum: true` (the spec's own tracking mechanism, standards around `refnum`/`refnum-orig`); otherwise a SHA-256 digest of the extracted ciphertext bytes (not the raw multipart body, whose boundary/whitespace can differ between byte-identical resends). | Prefers the spec's real tracking mechanism where a partner supports it; content-digest is a documented gateway extension, not a spec concept, for partners who don't use refnum. |
 | Transaction-set metadata | `transaction-set` is an opaque, length-8-validated string (per the data dictionary's "8 character code" description) -- not derived from a 3-digit ANSI X12 transaction set number. The real WGQ 8-character code table wasn't available; treat as caller/TPA-supplied. | Avoids inventing a code-derivation formula the spec doesn't define. |
 | `version` field | Required config field (`envelope.default_version`, per-partner overridable), no default value. | The manual's own "4.0" is the *document* revision, not necessarily the wire `version` field (historically small decimals like "1.9"); guessing a value and shipping it to a real partner is worse than forcing an explicit operator decision. |
