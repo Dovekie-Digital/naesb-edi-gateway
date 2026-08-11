@@ -103,9 +103,9 @@ def test_parse_invalid_input_format_raises():
 
 
 def test_transaction_set_rejects_path_separator():
-    # transaction-set flows unmodified into sink filenames/object keys
-    # (app/sinks/filesystem_sink.py, app/sinks/s3_sink.py) -- a '/' must be
-    # rejected at the envelope-field boundary, not just length-checked.
+    # transaction-set flows unmodified into the webhook sink's JSON payload
+    # and the tracking DB -- a '/' must be rejected at the envelope-field
+    # boundary, not just length-checked.
     with pytest.raises(ValidationError):
         _fields(transaction_set="a/../..b")
 

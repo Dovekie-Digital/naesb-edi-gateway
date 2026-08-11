@@ -113,7 +113,8 @@ folder-layout/processed/error contract.
   S3-compatible bucket (AWS/MinIO/Wasabi), and a webhook. Filesystem and S3
   are "durable" by default; at least one durable sink must succeed for the
   transmission to be acknowledged. Both are keyed by the sending partner's
-  DUNS (`{base_dir|prefix}/{duns}/{timestamp}_{digest[:16]}_{transaction_set}.edi`).
+  DUNS (`{base_dir|prefix}/{duns}/{message_id}.edi`, `message_id` being the
+  tracking DB's `messages.id` UUID).
 - Every inbound and outbound transmission is tracked in Postgres (`messages`
   table) in addition to structured JSON logs; outbound jobs get their own
   `outbound_jobs` table for retry-schedule state.

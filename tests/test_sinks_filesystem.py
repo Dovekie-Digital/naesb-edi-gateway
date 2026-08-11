@@ -39,7 +39,7 @@ def test_filesystem_sink_writes_file(tmp_path):
     written = list((tmp_path / "987654321").iterdir())
     assert len(written) == 1
     assert written[0].read_bytes() == b"ISA*00*..."
-    assert "NOM00001" in written[0].name
+    assert written[0].name == "11111111-1111-1111-1111-111111111111.edi"
 
 
 def test_filesystem_sink_creates_duns_subdirectory(tmp_path):
@@ -57,9 +57,9 @@ def test_filesystem_sink_creates_duns_subdirectory(tmp_path):
     assert (tmp_path / "111222333").is_dir()
 
 
-def test_filesystem_sink_filename_omits_none_when_transaction_set_absent(tmp_path):
-    # transaction-set is optional/mutually-agreed -- a missing value must not
-    # literally f-string-interpolate to the text "None" in the filename.
+def test_filesystem_sink_filename_unaffected_by_missing_transaction_set(tmp_path):
+    # transaction-set is optional/mutually-agreed and no longer part of the
+    # filename at all -- a missing value must not change the filename shape.
     sink = FilesystemSink(base_dir=str(tmp_path))
     envelope = EnvelopeFields(
         version="1.9",
@@ -74,8 +74,7 @@ def test_filesystem_sink_filename_omits_none_when_transaction_set_absent(tmp_pat
 
     written = list((tmp_path / "987654321").iterdir())
     assert len(written) == 1
-    assert "None" not in written[0].name
-    assert written[0].name.endswith("_unspecified.edi")
+    assert written[0].name == "11111111-1111-1111-1111-111111111111.edi"
 
 
 def test_filesystem_sink_reports_failure_on_unwritable_dir(tmp_path):

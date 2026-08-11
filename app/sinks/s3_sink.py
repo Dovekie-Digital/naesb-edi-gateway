@@ -40,14 +40,5 @@ class S3Sink:
     def _put(self, message: InboundMessage) -> None:
         # Keyed by DUNS (the canonical wire identifier, message.envelope.from_id)
         # rather than the partner's config-file name label.
-        # transaction-set is mutually-agreed/optional per the data
-        # dictionary (app/envelope/fields.py) -- f-stringing a bare None
-        # would otherwise literally embed the text "None" in the object key.
-        transaction_set = message.envelope.transaction_set or "unspecified"
-        key = (
-            f"{self.prefix}{message.envelope.from_id}/"
-            f"{message.received_at.strftime('%Y%m%dT%H%M%SZ')}"
-            f"_{message.message_id}"
-            f"_{transaction_set}.edi"
-        )
+        key = f"{self.prefix}{message.envelope.from_id}/{message.message_id}.edi"
         self.client.put_object(Bucket=self.bucket, Key=key, Body=message.plaintext)
