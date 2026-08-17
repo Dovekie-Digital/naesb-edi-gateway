@@ -148,3 +148,33 @@ def test_parse_signed_mime_rejects_wrong_part_count():
             b"--B\r\ncontent-type: text/plain\r\n\r\nx\r\n--B--\r\n",
             'multipart/signed; protocol="application/pgp-signature"; boundary="B"',
         )
+
+
+def test_parse_signed_mime_falls_back_to_body_boundary_when_header_omits_it():
+    # Southern Star's TIBCO BusinessConnect receiver (server-id=BCCE-CONTAINER)
+    # sends real, correctly PGP-signed receipts whose Content-Type header
+    # never carries boundary= at all, even though the body is properly
+    # boundary-delimited -- confirmed live 2026-08-17. We must still parse
+    # these rather than rejecting a genuinely valid receipt.
+    receipt = NaesbReceipt.ok("coolhost", 42)
+    report_body, report_content_type = receipt.encode_report_part()
+    fake_signature = b"-----BEGIN PGP SIGNATURE-----\nfake\n-----END PGP SIGNATURE-----\n"
+    signed_body, content_type = build_signed_mime(report_body, report_content_type, fake_signature, "pgp-sha256")
+
+    headerless_content_type = 'multipart/signed; micalg="pgp-sha256"; protocol="application/pgp-signature"'
+    assert "boundary=" not in headerless_content_type
+
+    parsed_report_body, parsed_report_content_type, parsed_signature = parse_signed_mime(
+        signed_body, headerless_content_type
+    )
+    assert parsed_report_body == report_body
+    assert parsed_report_content_type == report_content_type
+    assert parsed_signature.rstrip(b"\r\n") == fake_signature.rstrip(b"\r\n")
+
+
+def test_parse_signed_mime_still_rejects_when_boundary_missing_everywhere():
+    with pytest.raises(ReceiptDecodeError):
+        parse_signed_mime(
+            b"not a multipart body at all",
+            'multipart/signed; protocol="application/pgp-signature"',
+        )

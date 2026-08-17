@@ -1,4 +1,4 @@
-from app.envelope.mime_split import content_type_param, split_mime_parts
+from app.envelope.mime_split import content_type_param, sniff_boundary_from_body, split_mime_parts
 
 
 def test_split_basic_two_parts():
@@ -45,3 +45,20 @@ def test_split_tolerates_bare_lf_before_boundary():
 
 def test_content_type_param_extracts_boundary():
     assert content_type_param('multipart/mixed; boundary="ABC123"', "boundary") == "ABC123"
+
+
+def test_sniff_boundary_from_body_reads_first_delimiter_line():
+    # Southern Star's TIBCO BusinessConnect receiver sends a Content-Type
+    # header with no boundary= param at all, even though the body is
+    # correctly boundary-delimited -- confirmed live 2026-08-17.
+    data = b"--31EH7ucmghONIowE6ZRUhkIFKEav14bVmsOPSAr\r\ncontent-type: multipart/report\r\n\r\n..."
+    assert sniff_boundary_from_body(data) == "31EH7ucmghONIowE6ZRUhkIFKEav14bVmsOPSAr"
+
+
+def test_sniff_boundary_from_body_tolerates_leading_crlf():
+    data = b"\r\n--BOUND\r\ncontent-type: text/plain\r\n\r\nhello\r\n--BOUND--\r\n"
+    assert sniff_boundary_from_body(data) == "BOUND"
+
+
+def test_sniff_boundary_from_body_returns_none_when_not_multipart():
+    assert sniff_boundary_from_body(b"not a multipart body at all") is None

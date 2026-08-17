@@ -11,7 +11,12 @@ from datetime import UTC, datetime
 from pydantic import BaseModel
 
 from app.envelope.error_codes import ErrorCode, describe
-from app.envelope.mime_split import MimeSplitError, content_type_param, split_mime_parts
+from app.envelope.mime_split import (
+    MimeSplitError,
+    content_type_param,
+    sniff_boundary_from_body,
+    split_mime_parts,
+)
 
 CRLF = b"\r\n"
 TIME_C_FORMAT = "%Y%m%d%H%M%S"
@@ -176,6 +181,13 @@ def parse_signed_mime(data: bytes, content_type: str) -> tuple[bytes, str, bytes
     """Inverse of build_signed_mime(): returns
     (report_body_bytes, report_content_type, signature_bytes)."""
     boundary = content_type_param(content_type, "boundary")
+    if boundary is None:
+        # Some partners' MIME stacks (e.g. Southern Star's TIBCO
+        # BusinessConnect receiver) send a well-formed, correctly
+        # boundary-delimited multipart/signed body but omit `boundary=`
+        # from the Content-Type header itself -- read it off the body
+        # instead of rejecting an otherwise valid receipt.
+        boundary = sniff_boundary_from_body(data)
     if boundary is None:
         raise ReceiptDecodeError("multipart/signed content-type is missing a boundary parameter")
     try:
