@@ -90,6 +90,15 @@ async def send_once(
             response.content, response_content_type
         )
     except ReceiptDecodeError as exc:
+        logger.warning(
+            "outbound_receipt_decode_failed_raw",
+            job_id=str(job.id),
+            partner=partner.name,
+            status_code=response.status_code,
+            response_headers=dict(response.headers),
+            response_content_type=response_content_type,
+            response_body_snippet=response.content[:2000].decode("utf-8", errors="replace"),
+        )
         raise DeliveryAttemptError(
             f"partner response was not a valid multipart/signed receipt: {exc}"
         ) from exc
