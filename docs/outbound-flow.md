@@ -199,7 +199,11 @@ Schema in `app/partners.py:66-85`, real values in `config/partners.yaml` (exampl
 - `outbound_auth` — credentials *we* present to the partner (`docs/authentication.md`).
 - `envelope_overrides` — per-partner `version`/`agreed_transaction_sets`/`use_refnum`.
 - `crypto_overrides` — per-partner `allowed_ciphers`/`allowed_digests`/`min_rsa_key_bits`,
-  for legacy partners whose receipts use weaker algorithms than the global default.
+  for legacy partners whose receipts use weaker algorithms than the global default, and
+  `encrypt_to_primary_key` for a partner whose PGP keystore doesn't hold the private half
+  of their certificate's encryption subkey (`app/outbound/enqueue.py` pins the recipient
+  fingerprint with GnuPG's `!` suffix in that case instead of letting GnuPG select the
+  subkey).
 - `require_signature` — not consulted on the outbound path itself (it gates the inbound
   `enforce_policy()` call); a partner's *receipt* is always signature-verified regardless.
 

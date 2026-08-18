@@ -60,6 +60,18 @@ class CryptoOverrides(BaseModel):
     # every other key in the keyring, and should be paired with a plan to get
     # that partner to rotate to a compliant key.
     min_rsa_key_bits: int | None = None
+    # GnuPG normally encrypts to a certificate's dedicated encryption subkey
+    # rather than its primary key when one is present (standard OpenPGP
+    # practice). Some legacy partner PGP keystores only hold the private
+    # half of the primary key and never loaded the subkey's private
+    # material, so a message encrypted to the subkey is undecryptable on
+    # their end even though we used their on-file public key correctly.
+    # Confirmed live 2026-08-18 with southern-star: they confirmed the
+    # primary key's fingerprint as the one they expect, and GnuPG's normal
+    # subkey selection (their key's encryption subkey) was exactly the key
+    # ID their system reported as missing. Set true only for a partner who
+    # has explicitly confirmed this -- don't guess it preemptively.
+    encrypt_to_primary_key: bool = False
 
     @field_validator("allowed_ciphers")
     @classmethod

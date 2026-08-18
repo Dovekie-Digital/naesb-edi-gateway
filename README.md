@@ -72,6 +72,24 @@ synchronously with a `multipart/signed` "gisb-acknowledgement-receipt".
   decrypts synchronously before sending the receipt (a valid spec choice),
   so it does not implement the asynchronous "Error Notification" flow for
   post-receipt decryption errors.
+- **PGP key material is a gateway-operational concern, not a NAESB
+  requirement, but confirm it per partner anyway.** A partner's PGP
+  certificate having a primary key plus a separate encryption subkey is
+  normal, modern OpenPGP practice -- GnuPG will encrypt to that subkey by
+  default. But a partner's own PGP keystore doesn't necessarily hold the
+  subkey's private half (older/legacy systems in particular may only have
+  the primary key's private material loaded). Confirmed live 2026-08-18
+  with southern-star: they reported "no private decryption key found" for
+  the exact subkey ID GnuPG selected from their on-file public key, then
+  confirmed the fingerprint they actually expect is their primary key.
+  Before relying on a new partner's on-file public key, either confirm
+  with them which key (primary vs. subkey) their system actually holds
+  the private half of, or watch for this exact failure mode after go-live
+  -- `crypto_overrides.encrypt_to_primary_key` (`app/partners.py`) is the
+  fix once confirmed, forcing GnuPG's `!`-pinned exact-key encryption
+  instead of normal subkey selection. Also confirm what key they use to
+  *sign* their acknowledgement receipts -- it is not guaranteed to be the
+  same key as their encryption key/subkey.
 
 **Before onboarding a real trading partner**, confirm all of the above
 against your actual Trading Partner Agreement (TPA) and the licensed NAESB

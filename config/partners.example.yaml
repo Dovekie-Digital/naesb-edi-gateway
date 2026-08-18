@@ -29,6 +29,17 @@ partners:
     #   allowed_ciphers: [AES256, AES192, AES128, 3DES]
     #   allowed_digests: [SHA256, SHA1]
     #   min_rsa_key_bits: 1024
+    #   # Only set true after a partner has explicitly confirmed (e.g. a
+    #   # "no private key found for <subkey-id>" decryption error on their
+    #   # end, followed by them confirming the fingerprint they actually
+    #   # expect is their key's *primary* key) that their PGP keystore
+    #   # doesn't hold the private half of their key's encryption subkey.
+    #   # Forces GnuPG to encrypt directly to the primary key (the "!"
+    #   # pin) instead of its normal subkey selection. Don't set this
+    #   # preemptively -- most modern PGP setups expect normal subkey
+    #   # selection, and this should only follow a real, confirmed report
+    #   # from that partner.
+    #   encrypt_to_primary_key: false
     # require_signature defaults true. Set false only for a partner with a
     # documented, accepted gap -- e.g. their real system doesn't actually
     # PGP-sign outbound messages despite a TPA nominally calling for it.

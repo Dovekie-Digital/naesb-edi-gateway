@@ -2,7 +2,7 @@ import uuid
 
 from app.envelope.fields import InputFormat
 from app.outbound.enqueue import enqueue_outbound
-from app.partners import ApiKeyAuthConfig, BasicAuthConfig, PartnerConfig
+from app.partners import ApiKeyAuthConfig, BasicAuthConfig, CryptoOverrides, PartnerConfig
 from app.settings import (
     CryptoConfig,
     EnvelopeConfig,
@@ -14,7 +14,11 @@ from app.tracking.models import MessageRecord, OutboundJob
 
 
 class FakeGpgService:
+    def __init__(self):
+        self.recipient_fingerprints: list[str] = []
+
     def encrypt_and_sign(self, data, recipient_fingerprint, signer_fingerprint, passphrase) -> bytes:
+        self.recipient_fingerprints.append(recipient_fingerprint)
         return b"ciphertext-" + data
 
 
@@ -87,3 +91,54 @@ async def test_enqueue_outbound_persists_from_and_to_id(monkeypatch):
     (record,) = tracker.records
     assert record.from_id == "123456789"
     assert record.to_id == "987654321"
+
+
+async def test_enqueue_outbound_uses_plain_fingerprint_by_default(monkeypatch):
+    settings = _settings(monkeypatch)
+    partner = _partner()
+    gpg = FakeGpgService()
+
+    await enqueue_outbound(
+        b"payload",
+        partner=partner,
+        input_format=InputFormat.X12,
+        transaction_set="873",
+        refnum=None,
+        refnum_orig=None,
+        settings=settings,
+        gpg=gpg,
+        fingerprints={"acme-pipeline": "fingerprint", "_self": "self-fingerprint"},
+        tracker=FakeMessageTracker(),
+        jobs=FakeJobRepository(),
+    )
+
+    assert gpg.recipient_fingerprints == ["fingerprint"]
+
+
+async def test_enqueue_outbound_pins_primary_key_when_overridden(monkeypatch):
+    # Southern Star's PGP keystore only holds the private half of their
+    # primary key, not their certificate's encryption subkey -- confirmed
+    # live 2026-08-18 after they reported "no private decryption key found"
+    # for the subkey ID GnuPG normally selects, then confirmed the
+    # fingerprint they actually expect is their primary key. The "!" suffix
+    # forces GnuPG to use exactly that key (see CryptoOverrides.encrypt_to_primary_key).
+    settings = _settings(monkeypatch)
+    partner = _partner()
+    partner.crypto_overrides = CryptoOverrides(encrypt_to_primary_key=True)
+    gpg = FakeGpgService()
+
+    await enqueue_outbound(
+        b"payload",
+        partner=partner,
+        input_format=InputFormat.X12,
+        transaction_set="873",
+        refnum=None,
+        refnum_orig=None,
+        settings=settings,
+        gpg=gpg,
+        fingerprints={"acme-pipeline": "fingerprint", "_self": "self-fingerprint"},
+        tracker=FakeMessageTracker(),
+        jobs=FakeJobRepository(),
+    )
+
+    assert gpg.recipient_fingerprints == ["fingerprint!"]

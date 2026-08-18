@@ -34,9 +34,15 @@ async def enqueue_outbound(
     # Encrypt once; the same ciphertext (and content digest) is reused by
     # the worker across every retry attempt, so partner-side dedup still
     # works.
+    recipient_fingerprint = fingerprints[partner.name]
+    if partner.crypto_overrides and partner.crypto_overrides.encrypt_to_primary_key:
+        # GnuPG's "!" suffix forces use of the exact specified key rather
+        # than letting it select an encryption subkey -- see
+        # CryptoOverrides.encrypt_to_primary_key.
+        recipient_fingerprint = f"{recipient_fingerprint}!"
     encrypted = gpg.encrypt_and_sign(
         payload,
-        recipient_fingerprint=fingerprints[partner.name],
+        recipient_fingerprint=recipient_fingerprint,
         signer_fingerprint=fingerprints["_self"],
         passphrase=settings.crypto.passphrase,
     )
