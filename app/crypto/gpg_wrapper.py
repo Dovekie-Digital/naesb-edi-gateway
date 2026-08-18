@@ -26,6 +26,7 @@ class VerifyResult:
     plaintext: bytes
     signer_fingerprint: str | None
     algo_info: AlgorithmInfo
+    stderr_text: str = ""
 
 
 class GpgService:
@@ -124,5 +125,9 @@ class GpgService:
         info = parse_status(result.stderr)
         valid = bool(result.valid) and result.fingerprint == expected_fingerprint
         return VerifyResult(
-            valid=valid, plaintext=data, signer_fingerprint=result.fingerprint, algo_info=info
+            valid=valid,
+            plaintext=data,
+            signer_fingerprint=result.fingerprint,
+            algo_info=info,
+            stderr_text=result.stderr or "",
         )

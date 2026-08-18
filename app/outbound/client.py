@@ -105,6 +105,14 @@ async def send_once(
 
     verify_result = gpg.verify_detached(report_body, signature, partner_fingerprint)
     if not verify_result.valid:
+        logger.warning(
+            "outbound_receipt_signature_invalid_raw",
+            job_id=str(job.id),
+            partner=partner.name,
+            signer_fingerprint=verify_result.signer_fingerprint,
+            gpg_stderr=verify_result.stderr_text,
+            signature_b64=base64.b64encode(signature).decode("ascii"),
+        )
         raise DeliveryAttemptError("partner receipt signature missing or invalid")
 
     overrides = partner.crypto_overrides
