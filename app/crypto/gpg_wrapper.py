@@ -113,6 +113,59 @@ class GpgService:
             raise GpgError(f"detached_sign failed: {result.status} / {getattr(result, 'stderr', '')}")
         return bytes(result.data)
 
+    def verify_receipt_signature(
+        self, report_body: bytes, signature: bytes, expected_fingerprint: str
+    ) -> VerifyResult:
+        """Verify a receipt's `application/pgp-signature` part against
+        `report_body`. Tries a normal RFC 1847 detached-signature verify
+        first; if that fails and the bytes are armored as a self-contained
+        OpenPGP message (`-----BEGIN PGP MESSAGE-----`) rather than a bare
+        signature (`-----BEGIN PGP SIGNATURE-----`), falls back to verifying
+        it as an inline-signed message instead.
+
+        Confirmed live against Southern Star's TIBCO BusinessConnect
+        receiver (Bouncy Castle FIPS PGP stack, `server-id=BCCE-CONTAINER`):
+        it embeds a One-Pass Signature Packet (RFC 4880 5.4) + a literal
+        data packet carrying its own copy of the report body + a trailing
+        Signature Packet, instead of a bare detached Signature Packet --
+        gpg itself reports "Packet type 4 not allowed in detached
+        signature" when handed this via verify_detached(). This is a
+        partner interop tolerance, not spec-mandated behavior: the receipt
+        envelope is correctly specified as a detached signature (RFC 1847,
+        see docs/PLAN.md / README.md), and verify_detached() remains the
+        primary path for every spec-compliant partner.
+
+        The inline message's own embedded copy of the data is never trusted
+        on its own -- it must match `report_body` (the bytes already
+        extracted from the surrounding multipart/report part) byte-for-byte,
+        so the signature is still effectively being checked against the
+        receipt content we actually use, just via a different gpg
+        invocation.
+        """
+        result = self.verify_detached(report_body, signature, expected_fingerprint)
+        if result.valid or not signature.lstrip().startswith(b"-----BEGIN PGP MESSAGE-----"):
+            return result
+        return self._verify_inline_message(report_body, signature, expected_fingerprint)
+
+    def _verify_inline_message(
+        self, expected_report_body: bytes, message: bytes, expected_fingerprint: str
+    ) -> VerifyResult:
+        result = self.gpg.decrypt(message, always_trust=True)
+        info = parse_status(result.stderr)
+        recovered = bytes(result.data)
+        valid = (
+            bool(result.valid)
+            and result.fingerprint == expected_fingerprint
+            and recovered == expected_report_body
+        )
+        return VerifyResult(
+            valid=valid,
+            plaintext=recovered,
+            signer_fingerprint=result.fingerprint,
+            algo_info=info,
+            stderr_text=result.stderr or "",
+        )
+
     def verify_detached(self, data: bytes, signature: bytes, expected_fingerprint: str) -> VerifyResult:
         """Verify a detached signature (as produced by detached_sign(), or
         received from a partner's `application/pgp-signature` body part)

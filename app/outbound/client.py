@@ -103,7 +103,7 @@ async def send_once(
             f"partner response was not a valid multipart/signed receipt: {exc}"
         ) from exc
 
-    verify_result = gpg.verify_detached(report_body, signature, partner_fingerprint)
+    verify_result = gpg.verify_receipt_signature(report_body, signature, partner_fingerprint)
     if not verify_result.valid:
         logger.warning(
             "outbound_receipt_signature_invalid_raw",

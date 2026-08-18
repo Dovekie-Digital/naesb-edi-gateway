@@ -130,8 +130,14 @@ the caller (`app/worker.py`), not this function.
    when we're the *receiver* (`docs/inbound-flow.md` §7). `parse_signed_mime()`
    (`app/envelope/receipt.py`) splits it into the report body and detached signature; a
    response that isn't in this shape is a `DeliveryAttemptError`, not a crash.
-5. **Verify the signature.** `gpg.verify_detached()` against the partner's known
-   fingerprint — missing or invalid signature is a `DeliveryAttemptError`.
+5. **Verify the signature.** `gpg.verify_receipt_signature()` against the partner's known
+   fingerprint — missing or invalid signature is a `DeliveryAttemptError`. This tries a
+   normal RFC 1847 detached-signature verify first, then falls back to verifying the
+   bytes as a self-contained inline-signed OpenPGP message (requiring its embedded data
+   to byte-for-byte match the already-parsed report body) if the detached verify fails
+   and the bytes are armored as `PGP MESSAGE` rather than `PGP SIGNATURE` — a tolerance
+   for Southern Star's TIBCO BusinessConnect receiver, which embeds a One-Pass Signature
+   Packet instead of sending a bare detached signature (`app/crypto/gpg_wrapper.py`).
 6. **Enforce digest policy.** `enforce_digest_policy()` (`app/crypto/policy.py:113-120`)
    checks the receipt's signature hash algorithm against
    `partner.crypto_overrides.allowed_digests` if set, else `settings.crypto.allowed_digests`
